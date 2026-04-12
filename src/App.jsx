@@ -133,11 +133,12 @@ function ShapeEl({ shape }) {
 
 // ─── Logo SVG ─────────────────────────────────────────────────────────────────
 
-function LogoSVG({ logo, svgRef, clipFrame }) {
+function LogoSVG({ logo, svgRef, clipFrame, layerMode, singleColor }) {
   if (!logo) return null;
   const { shapes, background, textLayer } = logo;
   const hasClip = clipFrame && clipFrame !== 'none';
   const clipId = 'logo-frame-clip';
+  const isOneLayer = layerMode === 'one';
 
   return (
     <svg
@@ -160,6 +161,14 @@ function LogoSVG({ logo, svgRef, clipFrame }) {
             <stop offset="100%" stopColor={background.color2} />
           </radialGradient>
         )}
+        {isOneLayer && (
+          <mask id="logo-shapes-mask">
+            <rect width="500" height="500" fill="black" />
+            {shapes.map((shape, i) => (
+              <ShapeEl key={i} shape={{ ...shape, fill: 'white', stroke: shape.stroke !== 'none' ? 'white' : 'none' }} />
+            ))}
+          </mask>
+        )}
         {hasClip && (
           <clipPath id={clipId}>
             {clipFramePath(clipFrame)}
@@ -175,11 +184,15 @@ function LogoSVG({ logo, svgRef, clipFrame }) {
         <rect width="500" height="500" fill="url(#logo-bg-grad)" />
       )}
 
-      {/* Shapes — clipped to frame if set */}
+      {/* Shapes — one layer uses a mask to export as single merged shape */}
       <g clipPath={hasClip ? `url(#${clipId})` : undefined}>
-        {shapes.map((shape, i) => (
-          <ShapeEl key={i} shape={shape} />
-        ))}
+        {isOneLayer ? (
+          <rect width="500" height="500" fill={singleColor} mask="url(#logo-shapes-mask)" />
+        ) : (
+          shapes.map((shape, i) => (
+            <ShapeEl key={i} shape={shape} />
+          ))
+        )}
       </g>
 
       {textLayer && (
@@ -691,7 +704,7 @@ export default function App() {
         {/* ── Canvas ── */}
         <section className="canvas-area">
           <div className={`logo-canvas-wrapper ${bgType === 'transparent' ? 'transparent-bg' : ''}`}>
-            <LogoSVG logo={logoData} svgRef={svgRef} clipFrame={clipFrame} />
+            <LogoSVG logo={logoData} svgRef={svgRef} clipFrame={clipFrame} layerMode={layerMode} singleColor={singleColor} />
           </div>
           <div className="canvas-actions">
             <button className="btn btn-save" onClick={saveToHistory}>♡ Save</button>
