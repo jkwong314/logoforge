@@ -383,6 +383,36 @@ export default function App() {
 
   const getSVGString = () => {
     if (!svgRef.current) return '';
+
+    if (bgType === 'transparent') {
+      const svg = svgRef.current;
+      let b = null;
+
+      if (clipFrame && clipFrame !== 'none') {
+        const clipEl = svg.querySelector('#logo-frame-clip > *');
+        if (clipEl) {
+          const bb = clipEl.getBBox();
+          if (bb.width > 0 && bb.height > 0) b = bb;
+        }
+      }
+
+      if (!b) {
+        const g = svg.querySelector('g');
+        if (g) {
+          const bb = g.getBBox();
+          if (bb.width > 0 && bb.height > 0) b = bb;
+        }
+      }
+
+      if (b) {
+        const clone = svg.cloneNode(true);
+        clone.setAttribute('viewBox', `${b.x} ${b.y} ${b.width} ${b.height}`);
+        clone.setAttribute('width', b.width);
+        clone.setAttribute('height', b.height);
+        return new XMLSerializer().serializeToString(clone);
+      }
+    }
+
     return new XMLSerializer().serializeToString(svgRef.current);
   };
 
@@ -413,15 +443,20 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const img = new Image();
     img.onload = () => {
+      const svgW = img.naturalWidth || 500;
+      const svgH = img.naturalHeight || 500;
+      const scale = size / Math.max(svgW, svgH);
+      const cw = Math.round(svgW * scale);
+      const ch = Math.round(svgH * scale);
       const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
+      canvas.width = cw;
+      canvas.height = ch;
       const ctx = canvas.getContext('2d');
       if (bgType !== 'transparent') {
         ctx.fillStyle = bgType === 'solid' ? bgColor : '#000000';
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, cw, ch);
       }
-      ctx.drawImage(img, 0, 0, size, size);
+      ctx.drawImage(img, 0, 0, cw, ch);
       const a = document.createElement('a');
       a.download = `logoforge-${size}px-${Date.now()}.png`;
       a.href = canvas.toDataURL('image/png');
