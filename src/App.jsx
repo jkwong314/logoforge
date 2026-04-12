@@ -317,6 +317,7 @@ export default function App() {
   const [lockColors, setLockColors] = useState(false);
   const [history, setHistory] = useState([]);
   const [gradientSelectedStop, setGradientSelectedStop] = useState(0);
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState(new Set());
   const [showPngMenu, setShowPngMenu] = useState(false);
   const [showExportAllMenu, setShowExportAllMenu] = useState(false);
   const [toast, setToast] = useState(null);
@@ -428,28 +429,39 @@ export default function App() {
 
   const clearHistory = () => setHistory([]);
 
-  const removeFromHistory = (id) => setHistory(h => h.filter(i => i.id !== id));
+  const removeFromHistory = (id) => {
+    setHistory(h => h.filter(i => i.id !== id));
+    setSelectedHistoryIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+  };
 
-  const exportAllSVG = () => {
-    setShowExportAllMenu(false);
-    history.forEach((item, idx) => {
+  const toggleHistorySelect = (id) => {
+    setSelectedHistoryIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllHistory = () => setSelectedHistoryIds(new Set(history.map(i => i.id)));
+  const deselectAllHistory = () => setSelectedHistoryIds(new Set());
+
+  const exportItemsSVG = (items) => {
+    items.forEach((item, idx) => {
       setTimeout(() => {
         const str = buildItemSVGString(item);
         const blob = new Blob([str], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `logoforge-${idx + 1}.svg`;
-        a.click();
+        a.href = url; a.download = `logoforge-${idx + 1}.svg`; a.click();
         URL.revokeObjectURL(url);
       }, idx * 250);
     });
-    showToast(`Exporting ${history.length} SVGs`);
+    showToast(`Exporting ${items.length} SVG${items.length > 1 ? 's' : ''}`);
   };
 
-  const exportAllPNG = (size) => {
-    setShowExportAllMenu(false);
-    history.forEach((item, idx) => {
+  const exportItemsPNG = (items, size) => {
+    setShowPngMenu(false);
+    items.forEach((item, idx) => {
       setTimeout(() => {
         const str = buildItemSVGString(item);
         const blob = new Blob([str], { type: 'image/svg+xml' });
@@ -465,15 +477,13 @@ export default function App() {
           }
           ctx.drawImage(img, 0, 0, size, size);
           const a = document.createElement('a');
-          a.download = `logoforge-${idx + 1}-${size}px.png`;
-          a.href = canvas.toDataURL('image/png');
-          a.click();
+          a.download = `logoforge-${idx + 1}-${size}px.png`; a.href = canvas.toDataURL('image/png'); a.click();
           URL.revokeObjectURL(url);
         };
         img.src = url;
       }, idx * 300);
     });
-    showToast(`Exporting ${history.length} PNGs`);
+    showToast(`Exporting ${items.length} PNG${items.length > 1 ? 's' : ''}`);
   };
 
   const getSVGString = () => {
@@ -561,20 +571,46 @@ export default function App() {
           <span className="brand-sub">Vector Logo Generator</span>
         </div>
         <div className="header-actions">
-          <button className="btn btn-ghost" onClick={copySVGCode}>Copy SVG</button>
-          <button className="btn btn-ghost" onClick={exportSVG}>Export SVG</button>
-          <div className="export-group" ref={pngMenuRef}>
-            <button className="btn btn-ghost" onClick={() => setShowPngMenu(v => !v)}>
-              Export PNG ▾
-            </button>
-            {showPngMenu && (
-              <div className="dropdown-menu">
-                {PNG_SIZES.map(s => (
-                  <button key={s} onClick={() => exportPNG(s)}>{s} × {s} px</button>
-                ))}
+          {selectedHistoryIds.size > 0 ? (
+            <>
+              <span style={{ color: 'var(--text-muted)', fontSize: 10, letterSpacing: '0.1em' }}>
+                {selectedHistoryIds.size} selected
+              </span>
+              <button className="btn btn-ghost" onClick={() => exportItemsSVG(history.filter(i => selectedHistoryIds.has(i.id)))}>
+                Export SVG
+              </button>
+              <div className="export-group" ref={pngMenuRef}>
+                <button className="btn btn-ghost" onClick={() => setShowPngMenu(v => !v)}>
+                  Export PNG ▾
+                </button>
+                {showPngMenu && (
+                  <div className="dropdown-menu">
+                    {PNG_SIZES.map(s => (
+                      <button key={s} onClick={() => exportItemsPNG(history.filter(i => selectedHistoryIds.has(i.id)), s)}>{s} × {s} px</button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+              <button className="btn btn-ghost" onClick={deselectAllHistory} style={{ color: 'var(--text-dim)' }}>✕ Clear</button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-ghost" onClick={copySVGCode}>Copy SVG</button>
+              <button className="btn btn-ghost" onClick={exportSVG}>Export SVG</button>
+              <div className="export-group" ref={pngMenuRef}>
+                <button className="btn btn-ghost" onClick={() => setShowPngMenu(v => !v)}>
+                  Export PNG ▾
+                </button>
+                {showPngMenu && (
+                  <div className="dropdown-menu">
+                    {PNG_SIZES.map(s => (
+                      <button key={s} onClick={() => exportPNG(s)}>{s} × {s} px</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </header>
 
@@ -868,23 +904,13 @@ export default function App() {
           <div className="history-header">
             <div className="control-label">Saved</div>
             {history.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div className="export-group" ref={exportAllMenuRef}>
-                  <button
-                    onClick={() => setShowExportAllMenu(v => !v)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' }}
-                  >
-                    Export ▾
-                  </button>
-                  {showExportAllMenu && (
-                    <div className="dropdown-menu" style={{ right: 0, minWidth: 130 }}>
-                      <button onClick={exportAllSVG}>SVG</button>
-                      {PNG_SIZES.map(s => (
-                        <button key={s} onClick={() => exportAllPNG(s)}>PNG {s}px</button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  onClick={selectedHistoryIds.size === history.length ? deselectAllHistory : selectAllHistory}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                >
+                  {selectedHistoryIds.size === history.length ? 'Deselect' : 'Select All'}
+                </button>
                 <button
                   onClick={clearHistory}
                   style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' }}
@@ -901,21 +927,29 @@ export default function App() {
             </div>
           ) : (
             <div className="history-grid">
-              {history.map(item => (
-                <div
-                  key={item.id}
-                  className={`history-item ${item.bgType === 'transparent' ? 'transparent-bg' : ''}`}
-                  onClick={() => loadFromHistory(item)}
-                  title="Click to restore"
-                >
-                  <MiniLogo logo={item.logoData} />
-                  <button
-                    className="history-item-delete"
-                    onClick={e => { e.stopPropagation(); removeFromHistory(item.id); }}
-                    title="Remove"
-                  >×</button>
-                </div>
-              ))}
+              {history.map(item => {
+                const isSelected = selectedHistoryIds.has(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className={`history-item ${item.bgType === 'transparent' ? 'transparent-bg' : ''} ${isSelected ? 'selected' : ''}`}
+                    onClick={() => loadFromHistory(item)}
+                    title="Click to restore"
+                  >
+                    <MiniLogo logo={item.logoData} />
+                    <button
+                      className="history-item-select"
+                      onClick={e => { e.stopPropagation(); toggleHistorySelect(item.id); }}
+                      title={isSelected ? 'Deselect' : 'Select'}
+                    >{isSelected ? '✓' : ''}</button>
+                    <button
+                      className="history-item-delete"
+                      onClick={e => { e.stopPropagation(); removeFromHistory(item.id); }}
+                      title="Remove"
+                    >✕</button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </aside>
