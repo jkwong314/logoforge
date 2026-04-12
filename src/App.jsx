@@ -23,6 +23,24 @@ const PNG_SIZES = [512, 1024, 2048];
 
 const randSeed = () => Math.floor(Math.random() * 2 ** 32);
 
+function GradientDef({ id, background }) {
+  if (background.gradientType === 'radial') {
+    return (
+      <radialGradient id={id} cx="50%" cy="50%" r="60%">
+        <stop offset="0%" stopColor={background.color1} />
+        <stop offset="100%" stopColor={background.color2} />
+      </radialGradient>
+    );
+  }
+  const { x1, y1, x2, y2 } = angleToGradientAttrs(background.angle ?? 180);
+  return (
+    <linearGradient id={id} x1={x1} y1={y1} x2={x2} y2={y2}>
+      <stop offset="0%" stopColor={background.color1} />
+      <stop offset="100%" stopColor={background.color2} />
+    </linearGradient>
+  );
+}
+
 // Convert CSS-style angle (deg) to SVG linearGradient x1/y1/x2/y2
 function angleToGradientAttrs(angleDeg) {
   const r = angleDeg * Math.PI / 180;
@@ -130,21 +148,7 @@ function LogoSVG({ logo, svgRef, clipFrame }) {
       height="500"
     >
       <defs>
-        {background.type === 'gradient' && background.gradientType !== 'radial' && (() => {
-          const a = angleToGradientAttrs(background.angle ?? 180);
-          return (
-            <linearGradient id="logo-bg-grad" x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2}>
-              <stop offset="0%" stopColor={background.color1} />
-              <stop offset="100%" stopColor={background.color2} />
-            </linearGradient>
-          );
-        })()}
-        {background.type === 'gradient' && background.gradientType === 'radial' && (
-          <radialGradient id="logo-bg-grad" cx="50%" cy="50%" r="60%">
-            <stop offset="0%" stopColor={background.color1} />
-            <stop offset="100%" stopColor={background.color2} />
-          </radialGradient>
-        )}
+        {background.type === 'gradient' && <GradientDef id="logo-bg-grad" background={background} />}
         {hasClip && (
           <clipPath id={clipId}>
             {clipFramePath(clipFrame)}
@@ -194,21 +198,7 @@ function MiniLogo({ logo, clipFrame }) {
   return (
     <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <defs>
-        {background.type === 'gradient' && background.gradientType !== 'radial' && (() => {
-          const a = angleToGradientAttrs(background.angle ?? 180);
-          return (
-            <linearGradient id="mini-bg-grad" x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2}>
-              <stop offset="0%" stopColor={background.color1} />
-              <stop offset="100%" stopColor={background.color2} />
-            </linearGradient>
-          );
-        })()}
-        {background.type === 'gradient' && background.gradientType === 'radial' && (
-          <radialGradient id="mini-bg-grad" cx="50%" cy="50%" r="60%">
-            <stop offset="0%" stopColor={background.color1} />
-            <stop offset="100%" stopColor={background.color2} />
-          </radialGradient>
-        )}
+        {background.type === 'gradient' && <GradientDef id="mini-bg-grad" background={background} />}
         {hasClip && <clipPath id="mini-clip">{clipFramePath(clipFrame)}</clipPath>}
       </defs>
       {background.type === 'solid' && <rect width="500" height="500" fill={background.color} />}
