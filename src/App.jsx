@@ -161,14 +161,6 @@ function LogoSVG({ logo, svgRef, clipFrame, layerMode, singleColor }) {
             <stop offset="100%" stopColor={background.color2} />
           </radialGradient>
         )}
-        {isOneLayer && (
-          <mask id="logo-shapes-mask">
-            <rect width="500" height="500" fill="black" />
-            {shapes.map((shape, i) => (
-              <ShapeEl key={i} shape={{ ...shape, fill: 'white', stroke: shape.stroke !== 'none' ? 'white' : 'none' }} />
-            ))}
-          </mask>
-        )}
         {hasClip && (
           <clipPath id={clipId}>
             {clipFramePath(clipFrame)}
@@ -176,7 +168,7 @@ function LogoSVG({ logo, svgRef, clipFrame, layerMode, singleColor }) {
         )}
       </defs>
 
-      {/* Background (always full canvas, outside clip) */}
+      {/* Layer 1: Background */}
       {background.type === 'solid' && (
         <rect width="500" height="500" fill={background.color} />
       )}
@@ -184,10 +176,12 @@ function LogoSVG({ logo, svgRef, clipFrame, layerMode, singleColor }) {
         <rect width="500" height="500" fill="url(#logo-bg-grad)" />
       )}
 
-      {/* Shapes — one layer uses a mask to export as single merged shape */}
+      {/* Layer 2: Shapes */}
       <g clipPath={hasClip ? `url(#${clipId})` : undefined}>
         {isOneLayer ? (
-          <rect width="500" height="500" fill={singleColor} mask="url(#logo-shapes-mask)" />
+          shapes.map((shape, i) => (
+            <ShapeEl key={i} shape={{ ...shape, fill: singleColor, stroke: 'none', opacity: 1, blendMode: 'normal' }} />
+          ))
         ) : (
           shapes.map((shape, i) => (
             <ShapeEl key={i} shape={shape} />
