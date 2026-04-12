@@ -201,6 +201,7 @@ export function generateLogo({
   palette,
   bgType,
   bgColor,
+  bgGradient,
   text,
   fontSize,
   textColor,
