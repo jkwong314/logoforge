@@ -452,6 +452,24 @@ html, body, #root {
 }
 .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
 
+.btn-export {
+  background: var(--panel-2);
+  border: 1px solid #3a3a3a;
+  color: var(--text);
+}
+.btn-export:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.btn-export-dim {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.btn-export-dim:hover { border-color: var(--text-muted); color: var(--text); }
+
 .btn-outline {
   background: transparent;
   border: 1px solid var(--border);

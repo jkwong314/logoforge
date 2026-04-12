@@ -573,15 +573,12 @@ export default function App() {
         <div className="header-actions">
           {selectedHistoryIds.size > 0 ? (
             <>
-              <span style={{ color: 'var(--text-muted)', fontSize: 10, letterSpacing: '0.1em' }}>
-                {selectedHistoryIds.size} selected
-              </span>
-              <button className="btn btn-ghost" onClick={() => exportItemsSVG(history.filter(i => selectedHistoryIds.has(i.id)))}>
-                Export SVG
+              <button className="btn btn-export" onClick={() => exportItemsSVG(history.filter(i => selectedHistoryIds.has(i.id)))}>
+                Export SVGs ({selectedHistoryIds.size})
               </button>
               <div className="export-group" ref={pngMenuRef}>
-                <button className="btn btn-ghost" onClick={() => setShowPngMenu(v => !v)}>
-                  Export PNG ▾
+                <button className="btn btn-export" onClick={() => setShowPngMenu(v => !v)}>
+                  Export PNGs ({selectedHistoryIds.size}) ▾
                 </button>
                 {showPngMenu && (
                   <div className="dropdown-menu">
@@ -591,14 +588,14 @@ export default function App() {
                   </div>
                 )}
               </div>
-              <button className="btn btn-ghost" onClick={deselectAllHistory} style={{ color: 'var(--text-dim)' }}>✕ Clear</button>
+              <button className="btn btn-export-dim" onClick={deselectAllHistory}>✕ Deselect</button>
             </>
           ) : (
             <>
-              <button className="btn btn-ghost" onClick={copySVGCode}>Copy SVG</button>
-              <button className="btn btn-ghost" onClick={exportSVG}>Export SVG</button>
+              <button className="btn btn-export" onClick={copySVGCode}>Copy SVG</button>
+              <button className="btn btn-export" onClick={exportSVG}>Export SVG</button>
               <div className="export-group" ref={pngMenuRef}>
-                <button className="btn btn-ghost" onClick={() => setShowPngMenu(v => !v)}>
+                <button className="btn btn-export" onClick={() => setShowPngMenu(v => !v)}>
                   Export PNG ▾
                 </button>
                 {showPngMenu && (
