@@ -690,6 +690,44 @@ html, body, #root {
   display: block;
 }
 
+.history-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.history-footer-btn {
+  width: 100%;
+  padding: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.history-footer-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.history-footer-btn--delete {
+  border-color: rgba(255,69,0,0.3);
+  color: var(--accent-2);
+}
+
+.history-footer-btn--delete:hover {
+  background: rgba(255,69,0,0.1);
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
 .history-empty {
   color: var(--text-dim);
   font-size: 10px;

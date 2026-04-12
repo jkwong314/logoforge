@@ -904,20 +904,12 @@ export default function App() {
           <div className="history-header">
             <div className="control-label">Saved</div>
             {history.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button
-                  onClick={selectedHistoryIds.size === history.length ? deselectAllHistory : selectAllHistory}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' }}
-                >
-                  {selectedHistoryIds.size === history.length ? 'Deselect' : 'Select All'}
-                </button>
-                <button
-                  onClick={clearHistory}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' }}
-                >
-                  Clear
-                </button>
-              </div>
+              <button
+                onClick={selectedHistoryIds.size === history.length ? deselectAllHistory : selectAllHistory}
+                style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' }}
+              >
+                {selectedHistoryIds.size === history.length ? 'Deselect' : 'Select All'}
+              </button>
             )}
           </div>
           {history.length === 0 ? (
@@ -926,27 +918,40 @@ export default function App() {
               Press S or click Save.
             </div>
           ) : (
-            <div className="history-grid">
-              {history.map(item => {
-                const isSelected = selectedHistoryIds.has(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    className={`history-item ${item.bgType === 'transparent' ? 'transparent-bg' : ''} ${isSelected ? 'selected' : ''}`}
-                    onClick={() => toggleHistorySelect(item.id)}
-                    title="Click to select"
-                  >
-                    <MiniLogo logo={item.logoData} />
-                    {isSelected && <div className="history-item-check">✓</div>}
-                    <button
-                      className="history-item-delete"
-                      onClick={e => { e.stopPropagation(); removeFromHistory(item.id); }}
-                      title="Remove"
-                    >✕</button>
-                  </div>
-                );
-              })}
-            </div>
+            <>
+              <div className="history-grid">
+                {history.map(item => {
+                  const isSelected = selectedHistoryIds.has(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`history-item ${item.bgType === 'transparent' ? 'transparent-bg' : ''} ${isSelected ? 'selected' : ''}`}
+                      onClick={() => toggleHistorySelect(item.id)}
+                      title="Click to select"
+                    >
+                      <MiniLogo logo={item.logoData} />
+                      {isSelected && <div className="history-item-check">✓</div>}
+                      <button
+                        className="history-item-delete"
+                        onClick={e => { e.stopPropagation(); removeFromHistory(item.id); }}
+                        title="Remove"
+                      >✕</button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="history-footer">
+                {selectedHistoryIds.size > 0 && (
+                  <button className="history-footer-btn history-footer-btn--delete"
+                    onClick={() => { history.filter(i => selectedHistoryIds.has(i.id)).forEach(i => removeFromHistory(i.id)); }}>
+                    Delete ({selectedHistoryIds.size})
+                  </button>
+                )}
+                <button className="history-footer-btn" onClick={clearHistory}>
+                  Clear All
+                </button>
+              </div>
+            </>
           )}
         </aside>
       </main>
