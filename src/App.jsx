@@ -23,21 +23,38 @@ const PNG_SIZES = [512, 1024, 2048];
 
 const randSeed = () => Math.floor(Math.random() * 2 ** 32);
 
-function GradientDef({ id, background }) {
-  if (background.gradientType === 'radial') {
-    return (
-      <radialGradient id={id} cx="50%" cy="50%" r="60%">
-        <stop offset="0%" stopColor={background.color1} />
-        <stop offset="100%" stopColor={background.color2} />
-      </radialGradient>
-    );
-  }
-  const { x1, y1, x2, y2 } = angleToGradientAttrs(background.angle ?? 180);
+function AngleDial({ angle, onChange }) {
+  const svgRef = useRef(null);
+  const handlePointerDown = (e) => {
+    e.preventDefault();
+    const rect = svgRef.current.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const update = (x, y) => {
+      let a = Math.atan2(x - cx, -(y - cy)) * 180 / Math.PI;
+      if (a < 0) a += 360;
+      onChange(Math.round(a));
+    };
+    update(e.clientX, e.clientY);
+    const onMove = (e) => update(e.clientX, e.clientY);
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+  const rad = (angle - 90) * Math.PI / 180;
+  const dotX = (12 + 7 * Math.cos(rad)).toFixed(2);
+  const dotY = (12 + 7 * Math.sin(rad)).toFixed(2);
   return (
-    <linearGradient id={id} x1={x1} y1={y1} x2={x2} y2={y2}>
-      <stop offset="0%" stopColor={background.color1} />
-      <stop offset="100%" stopColor={background.color2} />
-    </linearGradient>
+    <svg ref={svgRef} width="24" height="24" viewBox="0 0 24 24"
+      style={{ cursor: 'grab', flexShrink: 0, userSelect: 'none' }}
+      onPointerDown={handlePointerDown}>
+      <circle cx="12" cy="12" r="10.5" fill="var(--panel-2)" stroke="var(--border)" strokeWidth="1"/>
+      <line x1="12" y1="12" x2={dotX} y2={dotY} stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx={dotX} cy={dotY} r="2.5" fill="var(--accent)"/>
+    </svg>
   );
 }
 
@@ -265,6 +282,7 @@ export default function App() {
   const [lockShapes, setLockShapes] = useState(false);
   const [lockColors, setLockColors] = useState(false);
   const [history, setHistory] = useState([]);
+  const [gradientSelectedStop, setGradientSelectedStop] = useState(0);
   const [showPngMenu, setShowPngMenu] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastKey, setToastKey] = useState(0);
@@ -578,35 +596,68 @@ export default function App() {
 
             {bgType === 'gradient' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
-                {/* Two color pickers */}
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <input type="color" value={bgGrad1} onChange={e => setBgGrad1(e.target.value)}
-                    style={{ width: 28, height: 28, border: '1px solid var(--border)', background: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', padding: 2 }} />
-                  <div style={{ flex: 1, height: 16, borderRadius: 3, background: `linear-gradient(90deg, ${bgGrad1}, ${bgGrad2})` }} />
-                  <input type="color" value={bgGrad2} onChange={e => setBgGrad2(e.target.value)}
-                    style={{ width: 28, height: 28, border: '1px solid var(--border)', background: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', padding: 2 }} />
+                {/* Type + angle row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <button className={`chip ${bgGradType === 'linear' ? 'active' : ''}`} onClick={() => setBgGradType('linear')}>Linear</button>
+                  <button className={`chip ${bgGradType === 'radial' ? 'active' : ''}`} onClick={() => setBgGradType('radial')}>Radial</button>
+                  {bgGradType === 'linear' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 'auto' }}>
+                      <AngleDial angle={bgGradAngle} onChange={setBgGradAngle} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--panel-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '3px 6px' }}>
+                        <input
+                          type="number"
+                          value={bgGradAngle}
+                          min={0} max={359}
+                          onChange={e => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setBgGradAngle(((v % 360) + 360) % 360); }}
+                          style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text)', fontFamily: 'var(--font-ui)', fontSize: 11, width: 28, textAlign: 'right', padding: 0 }}
+                        />
+                        <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>°</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {/* Direction chips */}
-                <div className="chip-grid">
-                  {GRADIENT_DIRS.map(({ label, angle }) => {
-                    const isRadial = angle === null;
-                    const isActive = isRadial
-                      ? bgGradType === 'radial'
-                      : bgGradType === 'linear' && bgGradAngle === angle;
-                    return (
-                      <button
-                        key={label}
-                        className={`chip ${isActive ? 'active' : ''}`}
-                        style={{ minWidth: 32, textAlign: 'center' }}
-                        onClick={() => {
-                          if (isRadial) { setBgGradType('radial'); }
-                          else { setBgGradType('linear'); setBgGradAngle(angle); }
-                        }}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
+
+                {/* Gradient bar with stop handles */}
+                <div style={{ position: 'relative', height: 28 }}>
+                  <div style={{
+                    position: 'absolute', left: 10, right: 10, top: '50%', transform: 'translateY(-50%)',
+                    height: 12, borderRadius: 6,
+                    background: bgGradType === 'radial'
+                      ? `radial-gradient(circle, ${bgGrad1}, ${bgGrad2})`
+                      : `linear-gradient(90deg, ${bgGrad1}, ${bgGrad2})`
+                  }} />
+                  <button onClick={() => setGradientSelectedStop(0)} style={{
+                    position: 'absolute', left: 2, top: '50%', transform: 'translateY(-50%)',
+                    width: 16, height: 16, borderRadius: '50%', padding: 0, cursor: 'pointer',
+                    background: bgGrad1,
+                    border: gradientSelectedStop === 0 ? '2px solid #fff' : '2px solid rgba(255,255,255,0.3)',
+                    boxShadow: gradientSelectedStop === 0 ? '0 0 0 1px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.4)' : '0 1px 3px rgba(0,0,0,0.4)',
+                    transition: 'border-color 0.1s, box-shadow 0.1s'
+                  }} />
+                  <button onClick={() => setGradientSelectedStop(1)} style={{
+                    position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)',
+                    width: 16, height: 16, borderRadius: '50%', padding: 0, cursor: 'pointer',
+                    background: bgGrad2,
+                    border: gradientSelectedStop === 1 ? '2px solid #fff' : '2px solid rgba(255,255,255,0.3)',
+                    boxShadow: gradientSelectedStop === 1 ? '0 0 0 1px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.4)' : '0 1px 3px rgba(0,0,0,0.4)',
+                    transition: 'border-color 0.1s, box-shadow 0.1s'
+                  }} />
+                </div>
+
+                {/* Selected stop color picker */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="color"
+                    value={gradientSelectedStop === 0 ? bgGrad1 : bgGrad2}
+                    onChange={e => gradientSelectedStop === 0 ? setBgGrad1(e.target.value) : setBgGrad2(e.target.value)}
+                    style={{ width: 28, height: 28, border: '1px solid var(--border)', background: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', padding: 2 }}
+                  />
+                  <span style={{ color: 'var(--text)', fontSize: 11, letterSpacing: '0.04em', fontFamily: 'var(--font-ui)' }}>
+                    {(gradientSelectedStop === 0 ? bgGrad1 : bgGrad2).toUpperCase()}
+                  </span>
+                  <span style={{ color: 'var(--text-dim)', fontSize: 9, letterSpacing: '0.1em', marginLeft: 'auto' }}>
+                    STOP {gradientSelectedStop + 1}
+                  </span>
                 </div>
               </div>
             )}
