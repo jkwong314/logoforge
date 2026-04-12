@@ -148,7 +148,18 @@ function LogoSVG({ logo, svgRef, clipFrame }) {
       height="500"
     >
       <defs>
-        {background.type === 'gradient' && <GradientDef id="logo-bg-grad" background={background} />}
+        {background.type === 'gradient' && background.gradientType !== 'radial' && (
+          <linearGradient id="logo-bg-grad" {...angleToGradientAttrs(background.angle ?? 180)}>
+            <stop offset="0%" stopColor={background.color1} />
+            <stop offset="100%" stopColor={background.color2} />
+          </linearGradient>
+        )}
+        {background.type === 'gradient' && background.gradientType === 'radial' && (
+          <radialGradient id="logo-bg-grad" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stopColor={background.color1} />
+            <stop offset="100%" stopColor={background.color2} />
+          </radialGradient>
+        )}
         {hasClip && (
           <clipPath id={clipId}>
             {clipFramePath(clipFrame)}
@@ -198,7 +209,18 @@ function MiniLogo({ logo, clipFrame }) {
   return (
     <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <defs>
-        {background.type === 'gradient' && <GradientDef id="mini-bg-grad" background={background} />}
+        {background.type === 'gradient' && background.gradientType !== 'radial' && (
+          <linearGradient id="mini-bg-grad" {...angleToGradientAttrs(background.angle ?? 180)}>
+            <stop offset="0%" stopColor={background.color1} />
+            <stop offset="100%" stopColor={background.color2} />
+          </linearGradient>
+        )}
+        {background.type === 'gradient' && background.gradientType === 'radial' && (
+          <radialGradient id="mini-bg-grad" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stopColor={background.color1} />
+            <stop offset="100%" stopColor={background.color2} />
+          </radialGradient>
+        )}
         {hasClip && <clipPath id="mini-clip">{clipFramePath(clipFrame)}</clipPath>}
       </defs>
       {background.type === 'solid' && <rect width="500" height="500" fill={background.color} />}
