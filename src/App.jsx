@@ -111,6 +111,87 @@ function ShapeEl({ shape }) {
   return groupTransform ? <g transform={groupTransform}>{el}</g> : el;
 }
 
+// ─── Bulk export helpers (pure string — no DOM needed) ────────────────────────
+
+function shapeToStr(shape) {
+  const { groupTransform, fill, stroke, strokeWidth, opacity, blendMode, ...props } = shape;
+  const f = fill || 'none';
+  const s = stroke || 'none';
+  const sw = strokeWidth || 0;
+  const styleStr = [
+    blendMode && blendMode !== 'normal' ? `mix-blend-mode:${blendMode}` : '',
+    opacity != null && opacity !== 1 ? `opacity:${opacity}` : '',
+  ].filter(Boolean).join(';');
+  const st = styleStr ? ` style="${styleStr}"` : '';
+  const base = `fill="${f}" stroke="${s}" stroke-width="${sw}"${st}`;
+  let el;
+  switch (props.type) {
+    case 'circle':
+      el = `<circle cx="${props.cx}" cy="${props.cy}" r="${Math.max(1, props.r)}" ${base}/>`;
+      break;
+    case 'ellipse': {
+      const t = props.rotation ? ` transform="rotate(${props.rotation} ${props.cx} ${props.cy})"` : '';
+      el = `<ellipse cx="${props.cx}" cy="${props.cy}" rx="${Math.max(1, props.rx)}" ry="${Math.max(1, props.ry)}"${t} ${base}/>`;
+      break;
+    }
+    case 'rect': {
+      const t = props.rotation ? ` transform="rotate(${props.rotation} ${props.cx} ${props.cy})"` : '';
+      el = `<rect x="${props.cx - props.width / 2}" y="${props.cy - props.height / 2}" width="${Math.max(1, props.width)}" height="${Math.max(1, props.height)}"${t} ${base}/>`;
+      break;
+    }
+    case 'polygon':
+      el = `<polygon points="${props.points}" ${base}/>`;
+      break;
+    case 'path': {
+      const t = props.rotation ? ` transform="rotate(${props.rotation} ${props.cx} ${props.cy})"` : '';
+      el = `<path d="${props.d}"${t} ${base}/>`;
+      break;
+    }
+    case 'ring': {
+      const rc = f !== 'none' ? f : s;
+      el = `<circle cx="${props.cx}" cy="${props.cy}" r="${Math.max(1, props.r * 0.68)}" stroke="${rc}" stroke-width="${props.r * 0.6}" fill="none"${st}/>`;
+      break;
+    }
+    default:
+      el = `<circle cx="${props.cx}" cy="${props.cy}" r="50" ${base}/>`;
+  }
+  return groupTransform ? `<g transform="${groupTransform}">${el}</g>` : el;
+}
+
+function buildItemSVGString(item) {
+  const { logoData, layerMode, singleColor } = item;
+  const { shapes, background, textLayer } = logoData;
+  const isOneLayer = layerMode === 'one';
+
+  let defs = '';
+  if (background.type === 'gradient') {
+    if (background.gradientType === 'radial') {
+      defs = `<defs><radialGradient id="bg-grad" cx="50%" cy="50%" r="60%"><stop offset="0%" stop-color="${background.color1}"/><stop offset="100%" stop-color="${background.color2}"/></radialGradient></defs>`;
+    } else {
+      const { x1, y1, x2, y2 } = angleToGradientAttrs(background.angle ?? 180);
+      defs = `<defs><linearGradient id="bg-grad" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0%" stop-color="${background.color1}"/><stop offset="100%" stop-color="${background.color2}"/></linearGradient></defs>`;
+    }
+  }
+
+  const bg = background.type === 'solid'
+    ? `<rect width="500" height="500" fill="${background.color}"/>`
+    : background.type === 'gradient'
+    ? `<rect width="500" height="500" fill="url(#bg-grad)"/>`
+    : '';
+
+  const shapesStr = shapes.map(shape =>
+    isOneLayer
+      ? shapeToStr({ ...shape, fill: singleColor, stroke: 'none', opacity: 1, blendMode: 'normal' })
+      : shapeToStr(shape)
+  ).join('');
+
+  const text = textLayer
+    ? `<text x="${textLayer.x}" y="${textLayer.y}" text-anchor="middle" dominant-baseline="auto" font-size="${textLayer.fontSize}" fill="${textLayer.fill}" font-family="${textLayer.fontFamily}" font-weight="${textLayer.fontWeight}" letter-spacing="${textLayer.letterSpacing}">${textLayer.text}</text>`
+    : '';
+
+  return `<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" width="500" height="500">${defs}${bg}<g>${shapesStr}</g>${text}</svg>`;
+}
+
 // ─── Logo SVG ─────────────────────────────────────────────────────────────────
 
 function LogoSVG({ logo, svgRef, layerMode, singleColor }) {
@@ -237,11 +318,13 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [gradientSelectedStop, setGradientSelectedStop] = useState(0);
   const [showPngMenu, setShowPngMenu] = useState(false);
+  const [showExportAllMenu, setShowExportAllMenu] = useState(false);
   const [toast, setToast] = useState(null);
   const [toastKey, setToastKey] = useState(0);
 
   const svgRef = useRef(null);
   const pngMenuRef = useRef(null);
+  const exportAllMenuRef = useRef(null);
 
   // Close PNG menu on outside click
   useEffect(() => {
@@ -254,6 +337,18 @@ export default function App() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showPngMenu]);
+
+  // Close export-all menu on outside click
+  useEffect(() => {
+    if (!showExportAllMenu) return;
+    const handler = (e) => {
+      if (exportAllMenuRef.current && !exportAllMenuRef.current.contains(e.target)) {
+        setShowExportAllMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showExportAllMenu]);
 
   // Keyboard shortcuts: Space = regenerate, S = save
   useEffect(() => {
@@ -332,6 +427,54 @@ export default function App() {
   };
 
   const clearHistory = () => setHistory([]);
+
+  const removeFromHistory = (id) => setHistory(h => h.filter(i => i.id !== id));
+
+  const exportAllSVG = () => {
+    setShowExportAllMenu(false);
+    history.forEach((item, idx) => {
+      setTimeout(() => {
+        const str = buildItemSVGString(item);
+        const blob = new Blob([str], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `logoforge-${idx + 1}.svg`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, idx * 250);
+    });
+    showToast(`Exporting ${history.length} SVGs`);
+  };
+
+  const exportAllPNG = (size) => {
+    setShowExportAllMenu(false);
+    history.forEach((item, idx) => {
+      setTimeout(() => {
+        const str = buildItemSVGString(item);
+        const blob = new Blob([str], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = size; canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          if (item.bgType !== 'transparent') {
+            ctx.fillStyle = item.bgType === 'solid' ? item.bgColor : '#000000';
+            ctx.fillRect(0, 0, size, size);
+          }
+          ctx.drawImage(img, 0, 0, size, size);
+          const a = document.createElement('a');
+          a.download = `logoforge-${idx + 1}-${size}px.png`;
+          a.href = canvas.toDataURL('image/png');
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      }, idx * 300);
+    });
+    showToast(`Exporting ${history.length} PNGs`);
+  };
 
   const getSVGString = () => {
     if (!svgRef.current) return '';
@@ -725,12 +868,30 @@ export default function App() {
           <div className="history-header">
             <div className="control-label">Saved</div>
             {history.length > 0 && (
-              <button
-                onClick={clearHistory}
-                style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' }}
-              >
-                Clear
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div className="export-group" ref={exportAllMenuRef}>
+                  <button
+                    onClick={() => setShowExportAllMenu(v => !v)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                  >
+                    Export ▾
+                  </button>
+                  {showExportAllMenu && (
+                    <div className="dropdown-menu" style={{ right: 0, minWidth: 130 }}>
+                      <button onClick={exportAllSVG}>SVG</button>
+                      {PNG_SIZES.map(s => (
+                        <button key={s} onClick={() => exportAllPNG(s)}>PNG {s}px</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={clearHistory}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                >
+                  Clear
+                </button>
+              </div>
             )}
           </div>
           {history.length === 0 ? (
@@ -748,6 +909,11 @@ export default function App() {
                   title="Click to restore"
                 >
                   <MiniLogo logo={item.logoData} />
+                  <button
+                    className="history-item-delete"
+                    onClick={e => { e.stopPropagation(); removeFromHistory(item.id); }}
+                    title="Remove"
+                  >×</button>
                 </div>
               ))}
             </div>
