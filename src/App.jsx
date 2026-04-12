@@ -293,6 +293,7 @@ export default function App() {
     setShapeCount(Math.floor(Math.random() * 8) + 2);
     setSymmetry(SYMMETRIES[Math.floor(Math.random() * SYMMETRIES.length)].key);
     setColorMode(Math.random() > 0.5 ? 'multi' : 'single');
+    setSingleColor('#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0'));
     setShapeSeed(randSeed());
     setColorSeed(randSeed());
   };
