@@ -211,6 +211,7 @@ export function generateLogo({
   colorMode,   // 'multi' | 'single'
   singleColor, // hex string used when colorMode === 'single'
   layerMode,   // 'one' | 'individual'
+  centerGap,   // 0 (heavy overlap) … 100 (open gap) — radial mode only
 }) {
   const cfg = STYLE_CONFIGS[style] || STYLE_CONFIGS.geometric;
   const sRNG = createRNG(shapeSeed);
@@ -240,9 +241,12 @@ export function generateLogo({
       const sizeFraction = ring === 0 ? 1.0 : rand(0.45, 0.75, sRNG);
       const size = rand(110, 200, sRNG) * cfg.sizeMult * sizeFraction;
 
-      // Offset controls clover-vs-spaced-petals
-      // 0.25 = heavy overlap at center; 0.55 = shapes just touch; 0.75 = gap
-      const overlapFactor = rand(0.28, 0.55, sRNG);
+      // centerGap (0–100) maps to overlapFactor (0.15–0.85):
+      //   0   → 0.15  heavy overlap — shapes fill the center
+      //   50  → 0.50  shapes just touch at center
+      //   100 → 0.85  clear whitespace gap between shapes
+      const gapNorm = (centerGap ?? 50) / 100;
+      const overlapFactor = 0.15 + gapNorm * 0.70;
       const offset = size * overlapFactor + ring * rand(55, 90, sRNG);
 
       const cx = 250 + offset;

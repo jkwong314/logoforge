@@ -191,6 +191,7 @@ export default function App() {
   const [colorMode, setColorMode] = useState('multi');   // 'multi' | 'single'
   const [singleColor, setSingleColor] = useState('#EAFF00');
   const [layerMode, setLayerMode] = useState('one');     // 'one' | 'individual'
+  const [centerGap, setCenterGap] = useState(50);        // 0=overlap … 100=far apart
   const [bgType, setBgType] = useState('solid');
   const [bgColor, setBgColor] = useState('#0D0D0D');
   const [clipFrame, setClipFrame] = useState('circle');
@@ -240,10 +241,10 @@ export default function App() {
       style, shapeCount, palette, bgType, bgColor,
       text, fontSize, textColor, fontFamily: 'sans-serif',
       symmetry, shapeSeed, colorSeed,
-      colorMode, singleColor, layerMode,
+      colorMode, singleColor, layerMode, centerGap,
     }),
     [style, shapeCount, palette, bgType, bgColor, text, fontSize, textColor,
-     symmetry, shapeSeed, colorSeed, colorMode, singleColor, layerMode]
+     symmetry, shapeSeed, colorSeed, colorMode, singleColor, layerMode, centerGap]
   );
 
   const regenerate = useCallback(() => {
@@ -270,7 +271,7 @@ export default function App() {
   const saveToHistory = useCallback(() => {
     setHistory(h => [
       { id: Date.now(), logoData, clipFrame, shapeSeed, colorSeed,
-        style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor, layerMode },
+        style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor, layerMode, centerGap },
       ...h,
     ].slice(0, 20));
     showToast('Saved to history');
@@ -288,6 +289,7 @@ export default function App() {
     setColorMode(item.colorMode || 'multi');
     if (item.singleColor) setSingleColor(item.singleColor);
     setLayerMode(item.layerMode || 'one');
+    if (item.centerGap !== undefined) setCenterGap(item.centerGap);
   };
 
   const clearHistory = () => setHistory([]);
@@ -523,6 +525,24 @@ export default function App() {
                 </button>
               ))}
             </div>
+
+            {(symmetry === 'radial-4' || symmetry === 'radial-6') && (
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="control-label">
+                  Center Gap
+                  <span className="control-value">{centerGap}%</span>
+                </div>
+                <input
+                  type="range" className="slider"
+                  min={0} max={100} value={centerGap}
+                  onChange={e => setCenterGap(+e.target.value)}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-dim)', fontSize: 9, letterSpacing: '0.08em' }}>
+                  <span>Overlap</span>
+                  <span>Open</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="divider" />
