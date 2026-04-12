@@ -23,6 +23,26 @@ const PNG_SIZES = [512, 1024, 2048];
 
 const randSeed = () => Math.floor(Math.random() * 2 ** 32);
 
+// Convert CSS-style angle (deg) to SVG linearGradient x1/y1/x2/y2
+function angleToGradientAttrs(angleDeg) {
+  const r = angleDeg * Math.PI / 180;
+  return {
+    x1: `${(50 - 50 * Math.sin(r)).toFixed(2)}%`,
+    y1: `${(50 + 50 * Math.cos(r)).toFixed(2)}%`,
+    x2: `${(50 + 50 * Math.sin(r)).toFixed(2)}%`,
+    y2: `${(50 - 50 * Math.cos(r)).toFixed(2)}%`,
+  };
+}
+
+const GRADIENT_DIRS = [
+  { label: '↓', angle: 180 },
+  { label: '→', angle: 90  },
+  { label: '↘', angle: 135 },
+  { label: '↗', angle: 45  },
+  { label: '↑', angle: 0   },
+  { label: '⊙', angle: null }, // radial
+];
+
 // Returns an SVG path/shape string for the given clip frame key
 function clipFramePath(key) {
   switch (key) {
@@ -110,11 +130,20 @@ function LogoSVG({ logo, svgRef, clipFrame }) {
       height="500"
     >
       <defs>
-        {background.type === 'gradient' && (
-          <linearGradient id="logo-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        {background.type === 'gradient' && background.gradientType !== 'radial' && (() => {
+          const a = angleToGradientAttrs(background.angle ?? 180);
+          return (
+            <linearGradient id="logo-bg-grad" x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2}>
+              <stop offset="0%" stopColor={background.color1} />
+              <stop offset="100%" stopColor={background.color2} />
+            </linearGradient>
+          );
+        })()}
+        {background.type === 'gradient' && background.gradientType === 'radial' && (
+          <radialGradient id="logo-bg-grad" cx="50%" cy="50%" r="60%">
             <stop offset="0%" stopColor={background.color1} />
             <stop offset="100%" stopColor={background.color2} />
-          </linearGradient>
+          </radialGradient>
         )}
         {hasClip && (
           <clipPath id={clipId}>
@@ -165,11 +194,20 @@ function MiniLogo({ logo, clipFrame }) {
   return (
     <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <defs>
-        {background.type === 'gradient' && (
-          <linearGradient id="mini-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        {background.type === 'gradient' && background.gradientType !== 'radial' && (() => {
+          const a = angleToGradientAttrs(background.angle ?? 180);
+          return (
+            <linearGradient id="mini-bg-grad" x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2}>
+              <stop offset="0%" stopColor={background.color1} />
+              <stop offset="100%" stopColor={background.color2} />
+            </linearGradient>
+          );
+        })()}
+        {background.type === 'gradient' && background.gradientType === 'radial' && (
+          <radialGradient id="mini-bg-grad" cx="50%" cy="50%" r="60%">
             <stop offset="0%" stopColor={background.color1} />
             <stop offset="100%" stopColor={background.color2} />
-          </linearGradient>
+          </radialGradient>
         )}
         {hasClip && <clipPath id="mini-clip">{clipFramePath(clipFrame)}</clipPath>}
       </defs>
@@ -194,6 +232,10 @@ export default function App() {
   const [centerGap, setCenterGap] = useState(50);        // 0=overlap … 100=far apart
   const [bgType, setBgType] = useState('solid');
   const [bgColor, setBgColor] = useState('#0D0D0D');
+  const [bgGrad1, setBgGrad1] = useState('#111111');
+  const [bgGrad2, setBgGrad2] = useState('#444444');
+  const [bgGradAngle, setBgGradAngle] = useState(180);
+  const [bgGradType, setBgGradType] = useState('linear'); // 'linear' | 'radial'
   const [clipFrame, setClipFrame] = useState('circle');
   const [symmetry, setSymmetry] = useState('none');
   const [text, setText] = useState('');
@@ -239,12 +281,15 @@ export default function App() {
   const logoData = useMemo(() =>
     generateLogo({
       style, shapeCount, palette, bgType, bgColor,
+      bgGradient: { color1: bgGrad1, color2: bgGrad2, angle: bgGradAngle, gradientType: bgGradType },
       text, fontSize, textColor, fontFamily: 'sans-serif',
       symmetry, shapeSeed, colorSeed,
-      colorMode, singleColor, layerMode, centerGap,
+      colorMode: layerMode === 'one' ? 'single' : colorMode,
+      singleColor, layerMode, centerGap,
     }),
-    [style, shapeCount, palette, bgType, bgColor, text, fontSize, textColor,
-     symmetry, shapeSeed, colorSeed, colorMode, singleColor, layerMode, centerGap]
+    [style, shapeCount, palette, bgType, bgColor, bgGrad1, bgGrad2, bgGradAngle, bgGradType,
+     text, fontSize, textColor, symmetry, shapeSeed, colorSeed,
+     colorMode, singleColor, layerMode, centerGap]
   );
 
   const regenerate = useCallback(() => {
@@ -271,7 +316,8 @@ export default function App() {
   const saveToHistory = useCallback(() => {
     setHistory(h => [
       { id: Date.now(), logoData, clipFrame, shapeSeed, colorSeed,
-        style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor, layerMode, centerGap },
+        style, paletteKey, bgType, bgColor, bgGrad1, bgGrad2, bgGradAngle, bgGradType,
+        symmetry, colorMode, singleColor, layerMode, centerGap },
       ...h,
     ].slice(0, 20));
     showToast('Saved to history');
@@ -290,6 +336,10 @@ export default function App() {
     if (item.singleColor) setSingleColor(item.singleColor);
     setLayerMode(item.layerMode || 'one');
     if (item.centerGap !== undefined) setCenterGap(item.centerGap);
+    if (item.bgGrad1) setBgGrad1(item.bgGrad1);
+    if (item.bgGrad2) setBgGrad2(item.bgGrad2);
+    if (item.bgGradAngle !== undefined) setBgGradAngle(item.bgGradAngle);
+    if (item.bgGradType) setBgGradType(item.bgGradType);
   };
 
   const clearHistory = () => setHistory([]);
@@ -424,49 +474,48 @@ export default function App() {
           {/* Colors */}
           <div className="control-group">
             <div className="control-label">Colors</div>
-            <div className="chip-grid" style={{ marginBottom: 8 }}>
-              <button
-                className={`chip ${colorMode === 'multi' ? 'active' : ''}`}
-                onClick={() => setColorMode('multi')}
-              >
-                Multicolor
-              </button>
-              <button
-                className={`chip ${colorMode === 'single' ? 'active' : ''}`}
-                onClick={() => setColorMode('single')}
-              >
-                Single
-              </button>
-            </div>
 
-            {colorMode === 'single' ? (
+            {layerMode === 'one' ? (
+              /* One Layer: single color only */
               <div className="color-row">
-                <input
-                  type="color"
-                  value={singleColor}
-                  onChange={e => setSingleColor(e.target.value)}
-                />
+                <input type="color" value={singleColor} onChange={e => setSingleColor(e.target.value)} />
                 <span style={{ color: 'var(--text)', fontSize: 11, letterSpacing: '0.04em', fontFamily: 'var(--font-ui)' }}>
                   {singleColor.toUpperCase()}
                 </span>
               </div>
             ) : (
-              <div className="palette-grid">
-                {PALETTE_KEYS.map(key => (
-                  <button
-                    key={key}
-                    className={`palette-chip ${paletteKey === key ? 'active' : ''}`}
-                    onClick={() => setPaletteKey(key)}
-                  >
-                    <div className="palette-swatches">
-                      {PALETTES[key].colors.slice(0, 5).map((c, i) => (
-                        <div key={i} className="swatch" style={{ background: c }} />
-                      ))}
-                    </div>
-                    <span>{PALETTES[key].name}</span>
+              /* Individual: multi-color palette or single picker */
+              <>
+                <div className="chip-grid" style={{ marginBottom: 8 }}>
+                  <button className={`chip ${colorMode === 'multi' ? 'active' : ''}`} onClick={() => setColorMode('multi')}>
+                    Multicolor
                   </button>
-                ))}
-              </div>
+                  <button className={`chip ${colorMode === 'single' ? 'active' : ''}`} onClick={() => setColorMode('single')}>
+                    Single
+                  </button>
+                </div>
+                {colorMode === 'single' ? (
+                  <div className="color-row">
+                    <input type="color" value={singleColor} onChange={e => setSingleColor(e.target.value)} />
+                    <span style={{ color: 'var(--text)', fontSize: 11, letterSpacing: '0.04em', fontFamily: 'var(--font-ui)' }}>
+                      {singleColor.toUpperCase()}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="palette-grid">
+                    {PALETTE_KEYS.map(key => (
+                      <button key={key} className={`palette-chip ${paletteKey === key ? 'active' : ''}`} onClick={() => setPaletteKey(key)}>
+                        <div className="palette-swatches">
+                          {PALETTES[key].colors.slice(0, 5).map((c, i) => (
+                            <div key={i} className="swatch" style={{ background: c }} />
+                          ))}
+                        </div>
+                        <span>{PALETTES[key].name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -500,15 +549,46 @@ export default function App() {
                 </button>
               ))}
             </div>
+
             {bgType === 'solid' && (
               <div className="color-row">
                 <input type="color" value={bgColor} onChange={e => setBgColor(e.target.value)} />
                 <span>{bgColor.toUpperCase()}</span>
               </div>
             )}
+
             {bgType === 'gradient' && (
-              <div className="color-row">
-                <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>Auto from palette</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
+                {/* Two color pickers */}
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input type="color" value={bgGrad1} onChange={e => setBgGrad1(e.target.value)}
+                    style={{ width: 28, height: 28, border: '1px solid var(--border)', background: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', padding: 2 }} />
+                  <div style={{ flex: 1, height: 16, borderRadius: 3, background: `linear-gradient(90deg, ${bgGrad1}, ${bgGrad2})` }} />
+                  <input type="color" value={bgGrad2} onChange={e => setBgGrad2(e.target.value)}
+                    style={{ width: 28, height: 28, border: '1px solid var(--border)', background: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', padding: 2 }} />
+                </div>
+                {/* Direction chips */}
+                <div className="chip-grid">
+                  {GRADIENT_DIRS.map(({ label, angle }) => {
+                    const isRadial = angle === null;
+                    const isActive = isRadial
+                      ? bgGradType === 'radial'
+                      : bgGradType === 'linear' && bgGradAngle === angle;
+                    return (
+                      <button
+                        key={label}
+                        className={`chip ${isActive ? 'active' : ''}`}
+                        style={{ minWidth: 32, textAlign: 'center' }}
+                        onClick={() => {
+                          if (isRadial) { setBgGradType('radial'); }
+                          else { setBgGradType('linear'); setBgGradAngle(angle); }
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

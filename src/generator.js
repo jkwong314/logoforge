@@ -315,11 +315,9 @@ export function generateLogo({
   const isSingle = colorMode === 'single' && singleColor;
   const isOneLayer = layerMode === 'one';
 
-  // For "one layer" mode: pick a single fill color up-front.
-  // All shapes get this color at full opacity — they merge into one solid form.
-  const oneLayerColor = isOneLayer
-    ? (isSingle ? singleColor : pick(colors, createRNG(colorSeed)))
-    : null;
+  // For "one layer" mode: always use singleColor — the UI only shows
+  // the single color picker when this mode is active.
+  const oneLayerColor = isOneLayer ? singleColor : null;
 
   const shapes = allShapes.map((shape) => {
     if (isOneLayer) {
@@ -360,8 +358,10 @@ export function generateLogo({
   } else if (bgType === 'gradient') {
     background = {
       type: 'gradient',
-      color1: colors[0],
-      color2: colors[colors.length - 1],
+      color1: bgGradient?.color1 || colors[0],
+      color2: bgGradient?.color2 || colors[colors.length - 1],
+      angle: bgGradient?.angle ?? 180,
+      gradientType: bgGradient?.gradientType || 'linear',
     };
   } else {
     background = { type: 'solid', color: bgColor };
