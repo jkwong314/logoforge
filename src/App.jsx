@@ -244,8 +244,8 @@ export default function App() {
   const [centerGap, setCenterGap] = useState(50);        // 0=overlap … 100=far apart
   const [bgType, setBgType] = useState('solid');
   const [bgColor, setBgColor] = useState('#0D0D0D');
-  const [bgGrad1, setBgGrad1] = useState('#111111');
-  const [bgGrad2, setBgGrad2] = useState('#444444');
+  const [bgGrad1, setBgGrad1] = useState('#0D0D2B');
+  const [bgGrad2, setBgGrad2] = useState('#7B2D8B');
   const [bgGradAngle, setBgGradAngle] = useState(180);
   const [bgGradType, setBgGradType] = useState('linear'); // 'linear' | 'radial'
   const [clipFrame, setClipFrame] = useState('circle');
