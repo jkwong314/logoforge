@@ -381,7 +381,7 @@ html, body, #root {
   position: relative;
   z-index: 1;
   border-radius: 6px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow:
     0 0 0 1px var(--border),
     0 20px 60px rgba(0,0,0,0.6),
@@ -390,6 +390,12 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.logo-canvas-wrapper svg:first-of-type {
+  border-radius: 6px;
+  overflow: hidden;
+  display: block;
 }
 
 .logo-canvas-wrapper:hover {
@@ -474,14 +480,46 @@ html, body, #root {
   transform: translateY(0);
 }
 
-.btn-save {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  height: 42px;
-  padding: 0 18px;
+.btn-heart {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s;
+  z-index: 2;
 }
-.btn-save:hover { border-color: #FF4081; color: #FF4081; }
+
+.btn-heart svg {
+  width: 17px;
+  height: 17px;
+  transition: all 0.18s;
+}
+
+.btn-heart:hover {
+  background: rgba(255,64,129,0.2);
+  border-color: #FF4081;
+  color: #FF4081;
+  transform: scale(1.1);
+}
+
+.btn-heart:hover svg {
+  fill: #FF4081;
+  stroke: #FF4081;
+}
+
+.btn-heart:active {
+  transform: scale(0.95);
+}
 
 .btn-random-all {
   background: rgba(255,69,0,0.12);

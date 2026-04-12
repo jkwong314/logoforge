@@ -708,11 +708,15 @@ export default function App() {
         <section className="canvas-area">
           <div className={`logo-canvas-wrapper ${bgType === 'transparent' ? 'transparent-bg' : ''}`}>
             <LogoSVG logo={logoData} svgRef={svgRef} layerMode={layerMode} singleColor={singleColor} />
+            <button className="btn-heart" onClick={saveToHistory} title="Save to history">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 14 21 12 21Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+              </svg>
+            </button>
           </div>
           <div className="canvas-actions">
-            <button className="btn btn-save" onClick={saveToHistory}>♡ Save</button>
-            <button className="btn btn-regen" onClick={regenerate}>⟳ Regenerate</button>
             <button className="btn btn-random-all" onClick={randomizeAll}>⚡ Randomize All</button>
+            <button className="btn btn-regen" onClick={regenerate}>⟳ Regenerate</button>
           </div>
         </section>
 
