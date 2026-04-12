@@ -4,7 +4,7 @@ import { PALETTES, PALETTE_KEYS } from './palettes';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const STYLES = ['minimal', 'geometric', 'abstract', 'retro', 'organic', 'brutalist'];
+const STYLES = ['minimal', 'geometric', 'abstract', 'retro', 'organic', 'brutalist', 'symmetrical'];
 const SYMMETRIES = [
   { key: 'none', label: 'Off' },
   { key: 'mirror-h', label: 'H-Mirror' },
@@ -190,6 +190,7 @@ export default function App() {
   const [paletteKey, setPaletteKey] = useState('electric');
   const [colorMode, setColorMode] = useState('multi');   // 'multi' | 'single'
   const [singleColor, setSingleColor] = useState('#EAFF00');
+  const [layerMode, setLayerMode] = useState('one');     // 'one' | 'individual'
   const [bgType, setBgType] = useState('solid');
   const [bgColor, setBgColor] = useState('#0D0D0D');
   const [clipFrame, setClipFrame] = useState('circle');
@@ -239,10 +240,10 @@ export default function App() {
       style, shapeCount, palette, bgType, bgColor,
       text, fontSize, textColor, fontFamily: 'sans-serif',
       symmetry, shapeSeed, colorSeed,
-      colorMode, singleColor,
+      colorMode, singleColor, layerMode,
     }),
     [style, shapeCount, palette, bgType, bgColor, text, fontSize, textColor,
-     symmetry, shapeSeed, colorSeed, colorMode, singleColor]
+     symmetry, shapeSeed, colorSeed, colorMode, singleColor, layerMode]
   );
 
   const regenerate = useCallback(() => {
@@ -269,11 +270,11 @@ export default function App() {
   const saveToHistory = useCallback(() => {
     setHistory(h => [
       { id: Date.now(), logoData, clipFrame, shapeSeed, colorSeed,
-        style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor },
+        style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor, layerMode },
       ...h,
     ].slice(0, 20));
     showToast('Saved to history');
-  }, [logoData, clipFrame, shapeSeed, colorSeed, style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor]);
+  }, [logoData, clipFrame, shapeSeed, colorSeed, style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor, layerMode]);
 
   const loadFromHistory = (item) => {
     setShapeSeed(item.shapeSeed);
@@ -286,6 +287,7 @@ export default function App() {
     setClipFrame(item.clipFrame || 'circle');
     setColorMode(item.colorMode || 'multi');
     if (item.singleColor) setSingleColor(item.singleColor);
+    setLayerMode(item.layerMode || 'one');
   };
 
   const clearHistory = () => setHistory([]);
@@ -394,6 +396,25 @@ export default function App() {
               min={2} max={12} value={shapeCount}
               onChange={e => setShapeCount(+e.target.value)}
             />
+          </div>
+
+          {/* Layer Mode */}
+          <div className="control-group">
+            <div className="control-label">Layers</div>
+            <div className="chip-grid">
+              <button
+                className={`chip ${layerMode === 'one' ? 'active' : ''}`}
+                onClick={() => setLayerMode('one')}
+              >
+                One Layer
+              </button>
+              <button
+                className={`chip ${layerMode === 'individual' ? 'active' : ''}`}
+                onClick={() => setLayerMode('individual')}
+              >
+                Individual
+              </button>
+            </div>
           </div>
 
           <div className="divider" />

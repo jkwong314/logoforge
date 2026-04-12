@@ -121,7 +121,17 @@ const STYLE_CONFIGS = {
     strokeP: 0.6,
     strokeOnlyP: 0.2,
     sizeMult: 1.1,
-    spreadFactor: 1.05,
+  },
+  symmetrical: {
+    // Shapes placed in concentric rings — all ring shapes same type + size
+    types: ['circle', 'hexagon', 'diamond', 'triangle', 'star', 'ring', 'pentagon'],
+    minN: 3, maxN: 7,
+    opRange: [0.9, 1],
+    useBlend: false,
+    strokeP: 0.35,
+    strokeOnlyP: 0.15,
+    sizeMult: 1.0,
+    symmetric: true, // triggers ring-based placement
   },
 };
 
@@ -166,6 +176,21 @@ function buildShape(type, cx, cy, size, rot, rng) {
   }
 }
 
+// Place N shapes evenly on a ring of given radius, all same type + size
+function placeRing(shapes, n, radius, size, cfg, sRNG) {
+  const type     = pick(cfg.types, sRNG);
+  const baseRot  = rand(0, 360, sRNG);
+  const startAng = rand(0, Math.PI * 2, sRNG);
+  for (let j = 0; j < n; j++) {
+    const angle = startAng + (j / n) * Math.PI * 2;
+    const cx = 250 + radius * Math.cos(angle);
+    const cy = 250 + radius * Math.sin(angle);
+    // Rotate each ring shape to face outward (tangential alignment)
+    const rot = baseRot + (j / n) * 360;
+    shapes.push(buildShape(type, cx, cy, size, rot, sRNG));
+  }
+}
+
 export function generateLogo({
   style,
   shapeCount,
@@ -181,38 +206,66 @@ export function generateLogo({
   colorSeed,
   colorMode,   // 'multi' | 'single'
   singleColor, // hex string used when colorMode === 'single'
+  layerMode,   // 'one' | 'individual'
 }) {
   const cfg = STYLE_CONFIGS[style] || STYLE_CONFIGS.geometric;
   const sRNG = createRNG(shapeSeed);
   const cRNG = createRNG(colorSeed);
 
   const n = shapeCount || irand(cfg.minN, cfg.maxN, sRNG);
-
-  // Composition: all shapes cluster tightly around center (250,250) so they
-  // form a single unified mass rather than scattered elements.
-  // Primary = almost centered, secondary = small orbit, accent = edge of cluster.
-  const SPREAD = {
-    primary:   { pos: 22,  sizeMin: 160, sizeMax: 240 },
-    secondary: { pos: 60,  sizeMin: 70,  sizeMax: 145 },
-    accent:    { pos: 90,  sizeMin: 28,  sizeMax: 70  },
-  };
-
   const baseShapes = [];
-  for (let i = 0; i < n; i++) {
-    const tier =
-      i === 0 ? 'primary' :
-      i < Math.ceil(n * 0.5) ? 'secondary' : 'accent';
 
-    const sp = SPREAD[tier];
-    const angle = rand(0, Math.PI * 2, sRNG);
-    const dist  = rand(0, sp.pos, sRNG);
-    const cx = 250 + dist * Math.cos(angle);
-    const cy = 250 + dist * Math.sin(angle);
+  if (cfg.symmetric) {
+    // ── Symmetrical style: ring-based concentric placement ──────────────────
+    // Decide structure: center shape + ring(s), or pure ring
+    const hasCenter = n === 1 || sRNG() > 0.35;
+    const ringCount = hasCenter ? n - 1 : n;
 
-    const size = rand(sp.sizeMin, sp.sizeMax, sRNG) * cfg.sizeMult;
-    const rot  = rand(0, 360, sRNG);
-    const type = pick(cfg.types, sRNG);
-    baseShapes.push(buildShape(type, cx, cy, size, rot, sRNG));
+    // Center shape
+    if (hasCenter) {
+      const centerType = pick(cfg.types, sRNG);
+      const centerSize = rand(100, 190, sRNG) * cfg.sizeMult;
+      const centerRot  = rand(0, 360, sRNG);
+      baseShapes.push(buildShape(centerType, 250, 250, centerSize, centerRot, sRNG));
+    }
+
+    if (ringCount > 0) {
+      // One or two rings depending on how many shapes are left
+      const twoRings = ringCount >= 6 && sRNG() > 0.4;
+
+      if (twoRings) {
+        const ring1N = Math.ceil(ringCount / 2);
+        const ring2N = ringCount - ring1N;
+        placeRing(baseShapes, ring1N, rand(65, 95, sRNG),  rand(55, 85, sRNG)  * cfg.sizeMult, cfg, sRNG);
+        placeRing(baseShapes, ring2N, rand(115, 150, sRNG), rand(35, 60, sRNG) * cfg.sizeMult, cfg, sRNG);
+      } else {
+        placeRing(baseShapes, ringCount, rand(70, 130, sRNG), rand(50, 100, sRNG) * cfg.sizeMult, cfg, sRNG);
+      }
+    }
+  } else {
+    // ── Cluster placement: shapes overlap tightly around center ─────────────
+    const SPREAD = {
+      primary:   { pos: 22,  sizeMin: 160, sizeMax: 240 },
+      secondary: { pos: 60,  sizeMin: 70,  sizeMax: 145 },
+      accent:    { pos: 90,  sizeMin: 28,  sizeMax: 70  },
+    };
+
+    for (let i = 0; i < n; i++) {
+      const tier =
+        i === 0 ? 'primary' :
+        i < Math.ceil(n * 0.5) ? 'secondary' : 'accent';
+
+      const sp = SPREAD[tier];
+      const angle = rand(0, Math.PI * 2, sRNG);
+      const dist  = rand(0, sp.pos, sRNG);
+      const cx = 250 + dist * Math.cos(angle);
+      const cy = 250 + dist * Math.sin(angle);
+
+      const size = rand(sp.sizeMin, sp.sizeMax, sRNG) * cfg.sizeMult;
+      const rot  = rand(0, 360, sRNG);
+      const type = pick(cfg.types, sRNG);
+      baseShapes.push(buildShape(type, cx, cy, size, rot, sRNG));
+    }
   }
 
   // Symmetry expansion
@@ -243,15 +296,31 @@ export function generateLogo({
   // Color assignment
   const colors = palette.colors;
   const isSingle = colorMode === 'single' && singleColor;
+  const isOneLayer = layerMode === 'one';
+
+  // For "one layer" mode: pick a single fill color up-front.
+  // All shapes get this color at full opacity — they merge into one solid form.
+  const oneLayerColor = isOneLayer
+    ? (isSingle ? singleColor : pick(colors, createRNG(colorSeed)))
+    : null;
 
   const shapes = allShapes.map((shape) => {
+    if (isOneLayer) {
+      return {
+        ...shape,
+        fill: oneLayerColor,
+        stroke: 'none',
+        strokeWidth: 0,
+        opacity: 1,
+        blendMode: 'normal',
+      };
+    }
+
     const strokeOnly = cRNG() < cfg.strokeOnlyP;
     const hasStroke = strokeOnly || cRNG() < cfg.strokeP;
 
     let fill, stroke;
     if (isSingle) {
-      // Single color mode: use the chosen hex for everything,
-      // vary opacity so overlapping layers create depth.
       fill = strokeOnly ? 'none' : singleColor;
       stroke = hasStroke ? singleColor : 'none';
     } else {
@@ -260,7 +329,6 @@ export function generateLogo({
     }
 
     const strokeWidth = hasStroke ? rand(2, 7, cRNG) : 0;
-    // Single color: widen opacity range so layers read individually
     const opMin = isSingle ? 0.3 : cfg.opRange[0];
     const opMax = isSingle ? 0.95 : cfg.opRange[1];
     const opacity = rand(opMin, opMax, cRNG);
