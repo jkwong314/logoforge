@@ -12,13 +12,6 @@ const SYMMETRIES = [
   { key: 'radial-4', label: '4× Radial' },
   { key: 'radial-6', label: '6× Radial' },
 ];
-const CLIP_FRAMES = [
-  { key: 'circle',     label: 'Circle' },
-  { key: 'square',     label: 'Square' },
-  { key: 'roundsq',   label: 'Rounded' },
-  { key: 'hexagon',   label: 'Hexagon' },
-  { key: 'none',      label: 'None' },
-];
 const PNG_SIZES = [512, 1024, 2048];
 
 const randSeed = () => Math.floor(Math.random() * 2 ** 32);
@@ -67,36 +60,6 @@ function angleToGradientAttrs(angleDeg) {
     x2: `${(50 + 50 * Math.sin(r)).toFixed(2)}%`,
     y2: `${(50 - 50 * Math.cos(r)).toFixed(2)}%`,
   };
-}
-
-const GRADIENT_DIRS = [
-  { label: '↓', angle: 180 },
-  { label: '→', angle: 90  },
-  { label: '↘', angle: 135 },
-  { label: '↗', angle: 45  },
-  { label: '↑', angle: 0   },
-  { label: '⊙', angle: null }, // radial
-];
-
-// Returns an SVG path/shape string for the given clip frame key
-function clipFramePath(key) {
-  switch (key) {
-    case 'circle':
-      return <circle cx="250" cy="250" r="225" />;
-    case 'square':
-      return <rect x="25" y="25" width="450" height="450" />;
-    case 'roundsq':
-      return <rect x="25" y="25" width="450" height="450" rx="60" />;
-    case 'hexagon': {
-      const pts = Array.from({ length: 6 }, (_, i) => {
-        const a = (i / 6) * Math.PI * 2 - Math.PI / 6;
-        return `${(250 + 225 * Math.cos(a)).toFixed(2)},${(250 + 225 * Math.sin(a)).toFixed(2)}`;
-      }).join(' ');
-      return <polygon points={pts} />;
-    }
-    default:
-      return null;
-  }
 }
 
 // ─── SVG Shape Renderer ───────────────────────────────────────────────────────
@@ -150,11 +113,9 @@ function ShapeEl({ shape }) {
 
 // ─── Logo SVG ─────────────────────────────────────────────────────────────────
 
-function LogoSVG({ logo, svgRef, clipFrame, layerMode, singleColor }) {
+function LogoSVG({ logo, svgRef, layerMode, singleColor }) {
   if (!logo) return null;
   const { shapes, background, textLayer } = logo;
-  const hasClip = clipFrame && clipFrame !== 'none';
-  const clipId = 'logo-frame-clip';
   const isOneLayer = layerMode === 'one';
 
   return (
@@ -178,11 +139,6 @@ function LogoSVG({ logo, svgRef, clipFrame, layerMode, singleColor }) {
             <stop offset="100%" stopColor={background.color2} />
           </radialGradient>
         )}
-        {hasClip && (
-          <clipPath id={clipId}>
-            {clipFramePath(clipFrame)}
-          </clipPath>
-        )}
       </defs>
 
       {/* Layer 1: Background */}
@@ -194,7 +150,7 @@ function LogoSVG({ logo, svgRef, clipFrame, layerMode, singleColor }) {
       )}
 
       {/* Layer 2: Shapes */}
-      <g clipPath={hasClip ? `url(#${clipId})` : undefined}>
+      <g>
         {isOneLayer ? (
           shapes.map((shape, i) => (
             <ShapeEl key={i} shape={{ ...shape, fill: singleColor, stroke: 'none', opacity: 1, blendMode: 'normal' }} />
@@ -226,10 +182,9 @@ function LogoSVG({ logo, svgRef, clipFrame, layerMode, singleColor }) {
 }
 
 // Mini logo for history thumbnails
-function MiniLogo({ logo, clipFrame }) {
+function MiniLogo({ logo }) {
   if (!logo) return null;
   const { shapes, background } = logo;
-  const hasClip = clipFrame && clipFrame !== 'none';
   return (
     <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <defs>
@@ -245,11 +200,10 @@ function MiniLogo({ logo, clipFrame }) {
             <stop offset="100%" stopColor={background.color2} />
           </radialGradient>
         )}
-        {hasClip && <clipPath id="mini-clip">{clipFramePath(clipFrame)}</clipPath>}
       </defs>
       {background.type === 'solid' && <rect width="500" height="500" fill={background.color} />}
       {background.type === 'gradient' && <rect width="500" height="500" fill="url(#mini-bg-grad)" />}
-      <g clipPath={hasClip ? 'url(#mini-clip)' : undefined}>
+      <g>
         {shapes.map((shape, i) => <ShapeEl key={i} shape={shape} />)}
       </g>
     </svg>
@@ -272,7 +226,6 @@ export default function App() {
   const [bgGrad2, setBgGrad2] = useState('#7B2D8B');
   const [bgGradAngle, setBgGradAngle] = useState(180);
   const [bgGradType, setBgGradType] = useState('linear'); // 'linear' | 'radial'
-  const [clipFrame, setClipFrame] = useState('circle');
   const [symmetry, setSymmetry] = useState('none');
   const [text, setText] = useState('');
   const [fontSize, setFontSize] = useState(52);
@@ -339,7 +292,6 @@ export default function App() {
     setPaletteKey(PALETTE_KEYS[Math.floor(Math.random() * PALETTE_KEYS.length)]);
     setShapeCount(Math.floor(Math.random() * 8) + 2);
     setSymmetry(SYMMETRIES[Math.floor(Math.random() * SYMMETRIES.length)].key);
-    setClipFrame(CLIP_FRAMES[Math.floor(Math.random() * CLIP_FRAMES.length)].key);
     setColorMode(Math.random() > 0.5 ? 'multi' : 'single');
     setShapeSeed(randSeed());
     setColorSeed(randSeed());
@@ -352,13 +304,13 @@ export default function App() {
 
   const saveToHistory = useCallback(() => {
     setHistory(h => [
-      { id: Date.now(), logoData, clipFrame, shapeSeed, colorSeed,
+      { id: Date.now(), logoData, shapeSeed, colorSeed,
         style, paletteKey, bgType, bgColor, bgGrad1, bgGrad2, bgGradAngle, bgGradType,
         symmetry, colorMode, singleColor, layerMode, centerGap },
       ...h,
     ].slice(0, 20));
     showToast('Saved to history');
-  }, [logoData, clipFrame, shapeSeed, colorSeed, style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor, layerMode]);
+  }, [logoData, shapeSeed, colorSeed, style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor, layerMode]);
 
   const loadFromHistory = (item) => {
     setShapeSeed(item.shapeSeed);
@@ -368,7 +320,6 @@ export default function App() {
     setBgType(item.bgType);
     setBgColor(item.bgColor);
     setSymmetry(item.symmetry);
-    setClipFrame(item.clipFrame || 'circle');
     setColorMode(item.colorMode || 'multi');
     if (item.singleColor) setSingleColor(item.singleColor);
     setLayerMode(item.layerMode || 'one');
@@ -388,20 +339,10 @@ export default function App() {
       const svg = svgRef.current;
       let b = null;
 
-      if (clipFrame && clipFrame !== 'none') {
-        const clipEl = svg.querySelector('#logo-frame-clip > *');
-        if (clipEl) {
-          const bb = clipEl.getBBox();
-          if (bb.width > 0 && bb.height > 0) b = bb;
-        }
-      }
-
-      if (!b) {
-        const g = svg.querySelector('g');
-        if (g) {
-          const bb = g.getBBox();
-          if (bb.width > 0 && bb.height > 0) b = bb;
-        }
+      const g = svg.querySelector('g');
+      if (g) {
+        const bb = g.getBBox();
+        if (bb.width > 0 && bb.height > 0) b = bb;
       }
 
       if (b) {
@@ -593,24 +534,6 @@ export default function App() {
 
           <div className="divider" />
 
-          {/* Clip Frame */}
-          <div className="control-group">
-            <div className="control-label">Clip Frame</div>
-            <div className="chip-grid">
-              {CLIP_FRAMES.map(f => (
-                <button
-                  key={f.key}
-                  className={`chip ${clipFrame === f.key ? 'active' : ''}`}
-                  onClick={() => setClipFrame(f.key)}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="divider" />
-
           {/* Background */}
           <div className="control-group">
             <div className="control-label">Background</div>
@@ -784,7 +707,7 @@ export default function App() {
         {/* ── Canvas ── */}
         <section className="canvas-area">
           <div className={`logo-canvas-wrapper ${bgType === 'transparent' ? 'transparent-bg' : ''}`}>
-            <LogoSVG logo={logoData} svgRef={svgRef} clipFrame={clipFrame} layerMode={layerMode} singleColor={singleColor} />
+            <LogoSVG logo={logoData} svgRef={svgRef} layerMode={layerMode} singleColor={singleColor} />
           </div>
           <div className="canvas-actions">
             <button className="btn btn-save" onClick={saveToHistory}>♡ Save</button>
@@ -819,7 +742,7 @@ export default function App() {
                   onClick={() => loadFromHistory(item)}
                   title="Click to restore"
                 >
-                  <MiniLogo logo={item.logoData} clipFrame={item.clipFrame} />
+                  <MiniLogo logo={item.logoData} />
                 </div>
               ))}
             </div>
