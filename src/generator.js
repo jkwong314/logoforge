@@ -47,6 +47,30 @@ function blobD(cx, cy, avgR, irregularity, n, rng) {
   return d + ' Z';
 }
 
+// Petal / pointed oval — horizontal by default (tips at left and right).
+// When placed at (250+offset, 250) and radial symmetry is applied, each copy
+// ends up pointing radially outward — exactly like the inspiration images.
+function petalD(cx, cy, hw, hh) {
+  const cp = hh * 0.92;
+  return [
+    `M ${(cx - hw).toFixed(2)} ${cy}`,
+    `C ${(cx - hw * 0.5).toFixed(2)} ${(cy - cp).toFixed(2)} ${(cx + hw * 0.5).toFixed(2)} ${(cy - cp).toFixed(2)} ${(cx + hw).toFixed(2)} ${cy}`,
+    `C ${(cx + hw * 0.5).toFixed(2)} ${(cy + cp).toFixed(2)} ${(cx - hw * 0.5).toFixed(2)} ${(cy + cp).toFixed(2)} ${(cx - hw).toFixed(2)} ${cy}`,
+    'Z',
+  ].join(' ');
+}
+
+// Lens / vesica piscis — two circular arcs forming a leaf/eye shape.
+// Also horizontal by default.
+function lensD(cx, cy, hw, hh) {
+  // Arc radius derived from chord-sagitta relationship
+  const r = (hw * hw + hh * hh) / (2 * hh);
+  const lx = (cx - hw).toFixed(2);
+  const rx = (cx + hw).toFixed(2);
+  const rs = r.toFixed(2);
+  return `M ${lx} ${cy} A ${rs} ${rs} 0 0 1 ${rx} ${cy} A ${rs} ${rs} 0 0 1 ${lx} ${cy} Z`;
+}
+
 // Cross / plus shape
 function crossD(cx, cy, size, thickness) {
   const h = size / 2;
@@ -63,75 +87,59 @@ function arrowD(cx, cy, size) {
 
 const STYLE_CONFIGS = {
   minimal: {
-    types: ['circle', 'rect', 'triangle', 'hexagon', 'diamond'],
-    minN: 2, maxN: 3,
+    types: ['circle', 'petal', 'lens', 'diamond', 'hexagon', 'ellipse'],
+    minN: 1, maxN: 2,
     opRange: [1, 1],
     useBlend: false,
-    strokeP: 0.4,
-    strokeOnlyP: 0.25,
+    strokeP: 0.3,
+    strokeOnlyP: 0.2,
     sizeMult: 1.3,
-    spreadFactor: 0.7,
   },
   geometric: {
-    types: ['circle', 'rect', 'triangle', 'hexagon', 'pentagon', 'diamond', 'star', 'cross'],
-    minN: 3, maxN: 7,
-    opRange: [0.85, 1],
-    useBlend: false,
-    strokeP: 0.4,
-    strokeOnlyP: 0.15,
-    sizeMult: 1.0,
-    spreadFactor: 1.0,
-  },
-  abstract: {
-    types: ['circle', 'ellipse', 'triangle', 'hexagon', 'blob', 'blob'],
-    minN: 5, maxN: 9,
-    opRange: [0.4, 0.85],
-    useBlend: true,
-    blendModes: ['multiply', 'screen', 'overlay', 'soft-light', 'color-dodge'],
-    strokeP: 0.1,
-    strokeOnlyP: 0,
-    sizeMult: 1.15,
-    spreadFactor: 1.1,
-  },
-  retro: {
-    types: ['circle', 'rect', 'triangle', 'diamond', 'star', 'ring', 'hexagon'],
-    minN: 2, maxN: 5,
-    opRange: [1, 1],
-    useBlend: false,
-    strokeP: 0.75,
-    strokeOnlyP: 0.35,
-    sizeMult: 1.05,
-    spreadFactor: 0.9,
-  },
-  organic: {
-    types: ['blob', 'blob', 'ellipse', 'circle', 'blob'],
-    minN: 3, maxN: 6,
-    opRange: [0.65, 0.95],
-    useBlend: false,
-    strokeP: 0.2,
-    strokeOnlyP: 0,
-    sizeMult: 1.2,
-    spreadFactor: 0.95,
-  },
-  brutalist: {
-    types: ['rect', 'rect', 'triangle', 'diamond', 'cross', 'rect'],
-    minN: 3, maxN: 6,
-    opRange: [1, 1],
-    useBlend: false,
-    strokeP: 0.6,
-    strokeOnlyP: 0.2,
-    sizeMult: 1.1,
-  },
-  symmetrical: {
-    // Shapes placed in concentric rings — all ring shapes same type + size
-    types: ['circle', 'hexagon', 'diamond', 'triangle', 'star', 'ring', 'pentagon'],
-    minN: 3, maxN: 7,
+    types: ['circle', 'rect', 'triangle', 'hexagon', 'diamond', 'star', 'cross', 'petal', 'lens'],
+    minN: 1, maxN: 3,
     opRange: [0.9, 1],
     useBlend: false,
     strokeP: 0.35,
     strokeOnlyP: 0.15,
     sizeMult: 1.0,
-    symmetric: true, // triggers ring-based placement
+  },
+  abstract: {
+    types: ['circle', 'ellipse', 'petal', 'lens', 'blob', 'hexagon'],
+    minN: 2, maxN: 4,
+    opRange: [0.5, 0.9],
+    useBlend: true,
+    blendModes: ['multiply', 'screen', 'overlay', 'soft-light'],
+    strokeP: 0.1,
+    strokeOnlyP: 0,
+    sizeMult: 1.15,
+  },
+  retro: {
+    types: ['circle', 'petal', 'diamond', 'star', 'ring', 'lens', 'hexagon'],
+    minN: 1, maxN: 3,
+    opRange: [1, 1],
+    useBlend: false,
+    strokeP: 0.7,
+    strokeOnlyP: 0.3,
+    sizeMult: 1.05,
+  },
+  organic: {
+    types: ['blob', 'petal', 'lens', 'ellipse', 'circle'],
+    minN: 1, maxN: 3,
+    opRange: [0.7, 0.95],
+    useBlend: false,
+    strokeP: 0.15,
+    strokeOnlyP: 0,
+    sizeMult: 1.2,
+  },
+  brutalist: {
+    types: ['rect', 'triangle', 'diamond', 'cross', 'hexagon'],
+    minN: 1, maxN: 3,
+    opRange: [1, 1],
+    useBlend: false,
+    strokeP: 0.55,
+    strokeOnlyP: 0.2,
+    sizeMult: 1.1,
   },
 };
 
@@ -158,6 +166,16 @@ function buildShape(type, cx, cy, size, rot, rng) {
       return { type: 'polygon', cx, cy, points: polyPts(cx, cy, size / 2, 6, rot) };
     case 'star':
       return { type: 'polygon', cx, cy, points: starPts(cx, cy, size / 2, size * 0.22, 5, rot) };
+    case 'petal': {
+      const hw = size / 2;
+      const hh = size * rand(0.25, 0.55, rng);
+      return { type: 'path', cx, cy, d: petalD(cx, cy, hw, hh), rotation: rot };
+    }
+    case 'lens': {
+      const hw = size / 2;
+      const hh = size * rand(0.2, 0.45, rng);
+      return { type: 'path', cx, cy, d: lensD(cx, cy, hw, hh), rotation: rot };
+    }
     case 'blob': {
       const n = irand(5, 9, rng);
       const irr = rand(0.18, 0.48, rng);
@@ -176,20 +194,6 @@ function buildShape(type, cx, cy, size, rot, rng) {
   }
 }
 
-// Place N shapes evenly on a ring of given radius, all same type + size
-function placeRing(shapes, n, radius, size, cfg, sRNG) {
-  const type     = pick(cfg.types, sRNG);
-  const baseRot  = rand(0, 360, sRNG);
-  const startAng = rand(0, Math.PI * 2, sRNG);
-  for (let j = 0; j < n; j++) {
-    const angle = startAng + (j / n) * Math.PI * 2;
-    const cx = 250 + radius * Math.cos(angle);
-    const cy = 250 + radius * Math.sin(angle);
-    // Rotate each ring shape to face outward (tangential alignment)
-    const rot = baseRot + (j / n) * 360;
-    shapes.push(buildShape(type, cx, cy, size, rot, sRNG));
-  }
-}
 
 export function generateLogo({
   style,
@@ -214,33 +218,42 @@ export function generateLogo({
 
   const n = shapeCount || irand(cfg.minN, cfg.maxN, sRNG);
   const baseShapes = [];
+  const isRadial = symmetry === 'radial-4' || symmetry === 'radial-6';
 
-  if (cfg.symmetric) {
-    // ── Symmetrical style: ring-based concentric placement ──────────────────
-    // Decide structure: center shape + ring(s), or pure ring
-    const hasCenter = n === 1 || sRNG() > 0.35;
-    const ringCount = hasCenter ? n - 1 : n;
+  if (isRadial) {
+    // ── Radial placement ────────────────────────────────────────────────────
+    // Place each base shape along the positive x-axis at a radial offset.
+    // The symmetry control rotates them into the full flower/clover pattern.
+    //
+    // Key: shapes with tips at center (offset < size/2) create clover/overlap
+    // patterns; shapes with gap at center (offset ≈ size/2) create spaced
+    // petal patterns. We keep the type consistent per "ring" for clean logos.
+    //
+    // For radial-4: shapeCount=1 → 4 petals, shapeCount=2 → 8 (two rings), etc.
+    const radialMult = symmetry === 'radial-4' ? 4 : 6;
+    const ringCount = Math.max(1, Math.ceil(n / radialMult));
 
-    // Center shape
-    if (hasCenter) {
-      const centerType = pick(cfg.types, sRNG);
-      const centerSize = rand(100, 190, sRNG) * cfg.sizeMult;
-      const centerRot  = rand(0, 360, sRNG);
-      baseShapes.push(buildShape(centerType, 250, 250, centerSize, centerRot, sRNG));
-    }
+    for (let ring = 0; ring < ringCount; ring++) {
+      const type = pick(cfg.types, sRNG);
 
-    if (ringCount > 0) {
-      // One or two rings depending on how many shapes are left
-      const twoRings = ringCount >= 6 && sRNG() > 0.4;
+      // Outer rings are smaller so the overall composition stays balanced
+      const sizeFraction = ring === 0 ? 1.0 : rand(0.45, 0.75, sRNG);
+      const size = rand(110, 200, sRNG) * cfg.sizeMult * sizeFraction;
 
-      if (twoRings) {
-        const ring1N = Math.ceil(ringCount / 2);
-        const ring2N = ringCount - ring1N;
-        placeRing(baseShapes, ring1N, rand(65, 95, sRNG),  rand(55, 85, sRNG)  * cfg.sizeMult, cfg, sRNG);
-        placeRing(baseShapes, ring2N, rand(115, 150, sRNG), rand(35, 60, sRNG) * cfg.sizeMult, cfg, sRNG);
-      } else {
-        placeRing(baseShapes, ringCount, rand(70, 130, sRNG), rand(50, 100, sRNG) * cfg.sizeMult, cfg, sRNG);
-      }
+      // Offset controls clover-vs-spaced-petals
+      // 0.25 = heavy overlap at center; 0.55 = shapes just touch; 0.75 = gap
+      const overlapFactor = rand(0.28, 0.55, sRNG);
+      const offset = size * overlapFactor + ring * rand(55, 90, sRNG);
+
+      const cx = 250 + offset;
+      const cy = 250;
+
+      // Petal / lens / ellipse: keep horizontal (rotation=0) so tips point
+      // radially outward. Other shapes: small variation for interest.
+      const isElongated = ['petal', 'lens', 'ellipse'].includes(type);
+      const rot = isElongated ? rand(-10, 10, sRNG) : irand(0, 3, sRNG) * 45;
+
+      baseShapes.push(buildShape(type, cx, cy, size, rot, sRNG));
     }
   } else {
     // ── Cluster placement: shapes overlap tightly around center ─────────────

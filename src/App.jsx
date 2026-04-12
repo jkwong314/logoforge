@@ -4,7 +4,7 @@ import { PALETTES, PALETTE_KEYS } from './palettes';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const STYLES = ['minimal', 'geometric', 'abstract', 'retro', 'organic', 'brutalist', 'symmetrical'];
+const STYLES = ['minimal', 'geometric', 'abstract', 'retro', 'organic', 'brutalist'];
 const SYMMETRIES = [
   { key: 'none', label: 'Off' },
   { key: 'mirror-h', label: 'H-Mirror' },
