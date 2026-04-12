@@ -179,33 +179,38 @@ export function generateLogo({
   symmetry,
   shapeSeed,
   colorSeed,
+  colorMode,   // 'multi' | 'single'
+  singleColor, // hex string used when colorMode === 'single'
 }) {
   const cfg = STYLE_CONFIGS[style] || STYLE_CONFIGS.geometric;
   const sRNG = createRNG(shapeSeed);
   const cRNG = createRNG(colorSeed);
 
   const n = shapeCount || irand(cfg.minN, cfg.maxN, sRNG);
-  const sf = cfg.spreadFactor;
 
-  // Generate base shapes with compositional tiers
+  // Composition: all shapes cluster tightly around center (250,250) so they
+  // form a single unified mass rather than scattered elements.
+  // Primary = almost centered, secondary = small orbit, accent = edge of cluster.
+  const SPREAD = {
+    primary:   { pos: 22,  sizeMin: 160, sizeMax: 240 },
+    secondary: { pos: 60,  sizeMin: 70,  sizeMax: 145 },
+    accent:    { pos: 90,  sizeMin: 28,  sizeMax: 70  },
+  };
+
   const baseShapes = [];
   for (let i = 0; i < n; i++) {
-    const isPrimary = i === 0;
-    const isSecondary = i < Math.ceil(n * 0.5);
-    const spread = sf;
+    const tier =
+      i === 0 ? 'primary' :
+      i < Math.ceil(n * 0.5) ? 'secondary' : 'accent';
 
-    const centerBias = isPrimary ? 0.15 : 0;
-    const cx = rand(250 - 150 * spread - centerBias * 100, 250 + 150 * spread + centerBias * 100, sRNG);
-    const cy = rand(250 - 150 * spread - centerBias * 100, 250 + 150 * spread + centerBias * 100, sRNG);
+    const sp = SPREAD[tier];
+    const angle = rand(0, Math.PI * 2, sRNG);
+    const dist  = rand(0, sp.pos, sRNG);
+    const cx = 250 + dist * Math.cos(angle);
+    const cy = 250 + dist * Math.sin(angle);
 
-    const sm = cfg.sizeMult;
-    const size = isPrimary
-      ? rand(150, 250, sRNG) * sm
-      : isSecondary
-      ? rand(70, 150, sRNG) * sm
-      : rand(25, 75, sRNG) * sm;
-
-    const rot = rand(0, 360, sRNG);
+    const size = rand(sp.sizeMin, sp.sizeMax, sRNG) * cfg.sizeMult;
+    const rot  = rand(0, 360, sRNG);
     const type = pick(cfg.types, sRNG);
     baseShapes.push(buildShape(type, cx, cy, size, rot, sRNG));
   }
@@ -237,13 +242,28 @@ export function generateLogo({
 
   // Color assignment
   const colors = palette.colors;
+  const isSingle = colorMode === 'single' && singleColor;
+
   const shapes = allShapes.map((shape) => {
     const strokeOnly = cRNG() < cfg.strokeOnlyP;
     const hasStroke = strokeOnly || cRNG() < cfg.strokeP;
-    const fill = strokeOnly ? 'none' : pick(colors, cRNG);
-    const stroke = hasStroke ? pick(colors, cRNG) : 'none';
+
+    let fill, stroke;
+    if (isSingle) {
+      // Single color mode: use the chosen hex for everything,
+      // vary opacity so overlapping layers create depth.
+      fill = strokeOnly ? 'none' : singleColor;
+      stroke = hasStroke ? singleColor : 'none';
+    } else {
+      fill = strokeOnly ? 'none' : pick(colors, cRNG);
+      stroke = hasStroke ? pick(colors, cRNG) : 'none';
+    }
+
     const strokeWidth = hasStroke ? rand(2, 7, cRNG) : 0;
-    const opacity = rand(cfg.opRange[0], cfg.opRange[1], cRNG);
+    // Single color: widen opacity range so layers read individually
+    const opMin = isSingle ? 0.3 : cfg.opRange[0];
+    const opMax = isSingle ? 0.95 : cfg.opRange[1];
+    const opacity = rand(opMin, opMax, cRNG);
     const blendMode = cfg.useBlend ? pick(cfg.blendModes, cRNG) : 'normal';
     return { ...shape, fill, stroke, strokeWidth, opacity, blendMode };
   });

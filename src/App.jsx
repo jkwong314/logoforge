@@ -12,11 +12,39 @@ const SYMMETRIES = [
   { key: 'radial-4', label: '4× Radial' },
   { key: 'radial-6', label: '6× Radial' },
 ];
+const CLIP_FRAMES = [
+  { key: 'circle',     label: 'Circle' },
+  { key: 'square',     label: 'Square' },
+  { key: 'roundsq',   label: 'Rounded' },
+  { key: 'hexagon',   label: 'Hexagon' },
+  { key: 'none',      label: 'None' },
+];
 const PNG_SIZES = [512, 1024, 2048];
 
 const randSeed = () => Math.floor(Math.random() * 2 ** 32);
 
-// ─── SVG Renderer ────────────────────────────────────────────────────────────
+// Returns an SVG path/shape string for the given clip frame key
+function clipFramePath(key) {
+  switch (key) {
+    case 'circle':
+      return <circle cx="250" cy="250" r="225" />;
+    case 'square':
+      return <rect x="25" y="25" width="450" height="450" />;
+    case 'roundsq':
+      return <rect x="25" y="25" width="450" height="450" rx="60" />;
+    case 'hexagon': {
+      const pts = Array.from({ length: 6 }, (_, i) => {
+        const a = (i / 6) * Math.PI * 2 - Math.PI / 6;
+        return `${(250 + 225 * Math.cos(a)).toFixed(2)},${(250 + 225 * Math.sin(a)).toFixed(2)}`;
+      }).join(' ');
+      return <polygon points={pts} />;
+    }
+    default:
+      return null;
+  }
+}
+
+// ─── SVG Shape Renderer ───────────────────────────────────────────────────────
 
 function ShapeEl({ shape }) {
   const { groupTransform, fill, stroke, strokeWidth, opacity, blendMode, ...props } = shape;
@@ -54,26 +82,24 @@ function ShapeEl({ shape }) {
       break;
     }
     case 'ring': {
-      // Ring: thick-stroke circle with no fill
       const ringColor = fill !== 'none' ? fill : stroke;
-      const ringR = Math.max(1, props.r * 0.68);
-      const ringW = props.r * 0.6;
-      el = <circle cx={props.cx} cy={props.cy} r={ringR} stroke={ringColor} strokeWidth={ringW} fill="none" style={style} />;
+      el = <circle cx={props.cx} cy={props.cy} r={Math.max(1, props.r * 0.68)} stroke={ringColor} strokeWidth={props.r * 0.6} fill="none" style={style} />;
       break;
     }
     default:
       el = <circle cx={props.cx} cy={props.cy} r={50} style={style} {...attrs} />;
   }
 
-  if (groupTransform) {
-    return <g transform={groupTransform}>{el}</g>;
-  }
-  return el;
+  return groupTransform ? <g transform={groupTransform}>{el}</g> : el;
 }
 
-function LogoSVG({ logo, svgRef }) {
+// ─── Logo SVG ─────────────────────────────────────────────────────────────────
+
+function LogoSVG({ logo, svgRef, clipFrame }) {
   if (!logo) return null;
   const { shapes, background, textLayer } = logo;
+  const hasClip = clipFrame && clipFrame !== 'none';
+  const clipId = 'logo-frame-clip';
 
   return (
     <svg
@@ -90,8 +116,14 @@ function LogoSVG({ logo, svgRef }) {
             <stop offset="100%" stopColor={background.color2} />
           </linearGradient>
         )}
+        {hasClip && (
+          <clipPath id={clipId}>
+            {clipFramePath(clipFrame)}
+          </clipPath>
+        )}
       </defs>
 
+      {/* Background (always full canvas, outside clip) */}
       {background.type === 'solid' && (
         <rect width="500" height="500" fill={background.color} />
       )}
@@ -99,9 +131,12 @@ function LogoSVG({ logo, svgRef }) {
         <rect width="500" height="500" fill="url(#logo-bg-grad)" />
       )}
 
-      {shapes.map((shape, i) => (
-        <ShapeEl key={i} shape={shape} />
-      ))}
+      {/* Shapes — clipped to frame if set */}
+      <g clipPath={hasClip ? `url(#${clipId})` : undefined}>
+        {shapes.map((shape, i) => (
+          <ShapeEl key={i} shape={shape} />
+        ))}
+      </g>
 
       {textLayer && (
         <text
@@ -122,27 +157,27 @@ function LogoSVG({ logo, svgRef }) {
   );
 }
 
-// Mini logo for history items
-function MiniLogo({ logo }) {
+// Mini logo for history thumbnails
+function MiniLogo({ logo, clipFrame }) {
   if (!logo) return null;
   const { shapes, background } = logo;
+  const hasClip = clipFrame && clipFrame !== 'none';
   return (
     <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <defs>
+        {background.type === 'gradient' && (
+          <linearGradient id="mini-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={background.color1} />
+            <stop offset="100%" stopColor={background.color2} />
+          </linearGradient>
+        )}
+        {hasClip && <clipPath id="mini-clip">{clipFramePath(clipFrame)}</clipPath>}
+      </defs>
       {background.type === 'solid' && <rect width="500" height="500" fill={background.color} />}
-      {background.type === 'gradient' && (
-        <>
-          <defs>
-            <linearGradient id="mini-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={background.color1} />
-              <stop offset="100%" stopColor={background.color2} />
-            </linearGradient>
-          </defs>
-          <rect width="500" height="500" fill="url(#mini-bg-grad)" />
-        </>
-      )}
-      {shapes.map((shape, i) => (
-        <ShapeEl key={i} shape={shape} />
-      ))}
+      {background.type === 'gradient' && <rect width="500" height="500" fill="url(#mini-bg-grad)" />}
+      <g clipPath={hasClip ? 'url(#mini-clip)' : undefined}>
+        {shapes.map((shape, i) => <ShapeEl key={i} shape={shape} />)}
+      </g>
     </svg>
   );
 }
@@ -153,8 +188,11 @@ export default function App() {
   const [style, setStyle] = useState('geometric');
   const [shapeCount, setShapeCount] = useState(5);
   const [paletteKey, setPaletteKey] = useState('electric');
+  const [colorMode, setColorMode] = useState('multi');   // 'multi' | 'single'
+  const [singleColor, setSingleColor] = useState('#EAFF00');
   const [bgType, setBgType] = useState('solid');
   const [bgColor, setBgColor] = useState('#0D0D0D');
+  const [clipFrame, setClipFrame] = useState('circle');
   const [symmetry, setSymmetry] = useState('none');
   const [text, setText] = useState('');
   const [fontSize, setFontSize] = useState(52);
@@ -183,7 +221,7 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showPngMenu]);
 
-  // Keyboard shortcut: Space = regenerate, S = save
+  // Keyboard shortcuts: Space = regenerate, S = save
   useEffect(() => {
     const handler = (e) => {
       if (e.target.tagName === 'INPUT') return;
@@ -201,8 +239,10 @@ export default function App() {
       style, shapeCount, palette, bgType, bgColor,
       text, fontSize, textColor, fontFamily: 'sans-serif',
       symmetry, shapeSeed, colorSeed,
+      colorMode, singleColor,
     }),
-    [style, shapeCount, palette, bgType, bgColor, text, fontSize, textColor, symmetry, shapeSeed, colorSeed]
+    [style, shapeCount, palette, bgType, bgColor, text, fontSize, textColor,
+     symmetry, shapeSeed, colorSeed, colorMode, singleColor]
   );
 
   const regenerate = useCallback(() => {
@@ -211,12 +251,12 @@ export default function App() {
   }, [lockShapes, lockColors]);
 
   const randomizeAll = () => {
-    const styleIdx = Math.floor(Math.random() * STYLES.length);
-    const palIdx = Math.floor(Math.random() * PALETTE_KEYS.length);
-    setStyle(STYLES[styleIdx]);
-    setPaletteKey(PALETTE_KEYS[palIdx]);
+    setStyle(STYLES[Math.floor(Math.random() * STYLES.length)]);
+    setPaletteKey(PALETTE_KEYS[Math.floor(Math.random() * PALETTE_KEYS.length)]);
     setShapeCount(Math.floor(Math.random() * 8) + 2);
     setSymmetry(SYMMETRIES[Math.floor(Math.random() * SYMMETRIES.length)].key);
+    setClipFrame(CLIP_FRAMES[Math.floor(Math.random() * CLIP_FRAMES.length)].key);
+    setColorMode(Math.random() > 0.5 ? 'multi' : 'single');
     setShapeSeed(randSeed());
     setColorSeed(randSeed());
   };
@@ -228,11 +268,12 @@ export default function App() {
 
   const saveToHistory = useCallback(() => {
     setHistory(h => [
-      { id: Date.now(), logoData, shapeSeed, colorSeed, style, paletteKey, bgType, bgColor, symmetry },
+      { id: Date.now(), logoData, clipFrame, shapeSeed, colorSeed,
+        style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor },
       ...h,
     ].slice(0, 20));
     showToast('Saved to history');
-  }, [logoData, shapeSeed, colorSeed, style, paletteKey, bgType, bgColor, symmetry]);
+  }, [logoData, clipFrame, shapeSeed, colorSeed, style, paletteKey, bgType, bgColor, symmetry, colorMode, singleColor]);
 
   const loadFromHistory = (item) => {
     setShapeSeed(item.shapeSeed);
@@ -242,6 +283,9 @@ export default function App() {
     setBgType(item.bgType);
     setBgColor(item.bgColor);
     setSymmetry(item.symmetry);
+    setClipFrame(item.clipFrame || 'circle');
+    setColorMode(item.colorMode || 'multi');
+    if (item.singleColor) setSingleColor(item.singleColor);
   };
 
   const clearHistory = () => setHistory([]);
@@ -306,15 +350,9 @@ export default function App() {
           <span className="brand-sub">Vector Logo Generator</span>
         </div>
         <div className="header-actions">
-          <button className="btn btn-random-all" onClick={randomizeAll}>
-            ⚡ Randomize All
-          </button>
-          <button className="btn btn-ghost" onClick={copySVGCode}>
-            Copy SVG
-          </button>
-          <button className="btn btn-ghost" onClick={exportSVG}>
-            Export SVG
-          </button>
+          <button className="btn btn-random-all" onClick={randomizeAll}>⚡ Randomize All</button>
+          <button className="btn btn-ghost" onClick={copySVGCode}>Copy SVG</button>
+          <button className="btn btn-ghost" onClick={exportSVG}>Export SVG</button>
           <div className="export-group" ref={pngMenuRef}>
             <button className="btn btn-ghost" onClick={() => setShowPngMenu(v => !v)}>
               Export PNG ▾
@@ -322,9 +360,7 @@ export default function App() {
             {showPngMenu && (
               <div className="dropdown-menu">
                 {PNG_SIZES.map(s => (
-                  <button key={s} onClick={() => exportPNG(s)}>
-                    {s} × {s} px
-                  </button>
+                  <button key={s} onClick={() => exportPNG(s)}>{s} × {s} px</button>
                 ))}
               </div>
             )}
@@ -362,22 +398,68 @@ export default function App() {
 
           <div className="divider" />
 
-          {/* Palette */}
+          {/* Colors */}
           <div className="control-group">
-            <div className="control-label">Palette</div>
-            <div className="palette-grid">
-              {PALETTE_KEYS.map(key => (
+            <div className="control-label">Colors</div>
+            <div className="chip-grid" style={{ marginBottom: 8 }}>
+              <button
+                className={`chip ${colorMode === 'multi' ? 'active' : ''}`}
+                onClick={() => setColorMode('multi')}
+              >
+                Multicolor
+              </button>
+              <button
+                className={`chip ${colorMode === 'single' ? 'active' : ''}`}
+                onClick={() => setColorMode('single')}
+              >
+                Single
+              </button>
+            </div>
+
+            {colorMode === 'single' ? (
+              <div className="color-row">
+                <input
+                  type="color"
+                  value={singleColor}
+                  onChange={e => setSingleColor(e.target.value)}
+                />
+                <span style={{ color: 'var(--text)', fontSize: 11, letterSpacing: '0.04em', fontFamily: 'var(--font-ui)' }}>
+                  {singleColor.toUpperCase()}
+                </span>
+              </div>
+            ) : (
+              <div className="palette-grid">
+                {PALETTE_KEYS.map(key => (
+                  <button
+                    key={key}
+                    className={`palette-chip ${paletteKey === key ? 'active' : ''}`}
+                    onClick={() => setPaletteKey(key)}
+                  >
+                    <div className="palette-swatches">
+                      {PALETTES[key].colors.slice(0, 5).map((c, i) => (
+                        <div key={i} className="swatch" style={{ background: c }} />
+                      ))}
+                    </div>
+                    <span>{PALETTES[key].name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="divider" />
+
+          {/* Clip Frame */}
+          <div className="control-group">
+            <div className="control-label">Clip Frame</div>
+            <div className="chip-grid">
+              {CLIP_FRAMES.map(f => (
                 <button
-                  key={key}
-                  className={`palette-chip ${paletteKey === key ? 'active' : ''}`}
-                  onClick={() => setPaletteKey(key)}
+                  key={f.key}
+                  className={`chip ${clipFrame === f.key ? 'active' : ''}`}
+                  onClick={() => setClipFrame(f.key)}
                 >
-                  <div className="palette-swatches">
-                    {PALETTES[key].colors.slice(0, 5).map((c, i) => (
-                      <div key={i} className="swatch" style={{ background: c }} />
-                    ))}
-                  </div>
-                  <span>{PALETTES[key].name}</span>
+                  {f.label}
                 </button>
               ))}
             </div>
@@ -467,7 +549,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Keyboard hints */}
           <div style={{ color: 'var(--text-dim)', fontSize: 9, letterSpacing: '0.1em', lineHeight: 1.8, marginTop: 4 }}>
             SPACE — regenerate<br />
             S — save to history
@@ -477,7 +558,7 @@ export default function App() {
         {/* ── Canvas ── */}
         <section className="canvas-area">
           <div className={`logo-canvas-wrapper ${bgType === 'transparent' ? 'transparent-bg' : ''}`}>
-            <LogoSVG logo={logoData} svgRef={svgRef} />
+            <LogoSVG logo={logoData} svgRef={svgRef} clipFrame={clipFrame} />
           </div>
           <div className="canvas-actions">
             <button className="btn btn-save" onClick={saveToHistory}>♡ Save</button>
@@ -508,11 +589,11 @@ export default function App() {
               {history.map(item => (
                 <div
                   key={item.id}
-                  className={`history-item ${bgType === 'transparent' ? 'transparent-bg' : ''}`}
+                  className={`history-item ${item.bgType === 'transparent' ? 'transparent-bg' : ''}`}
                   onClick={() => loadFromHistory(item)}
                   title="Click to restore"
                 >
-                  <MiniLogo logo={item.logoData} />
+                  <MiniLogo logo={item.logoData} clipFrame={item.clipFrame} />
                 </div>
               ))}
             </div>
@@ -520,7 +601,6 @@ export default function App() {
         </aside>
       </main>
 
-      {/* Toast */}
       {toast && <div key={toastKey} className="toast">{toast}</div>}
     </div>
   );
