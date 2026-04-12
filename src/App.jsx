@@ -418,7 +418,6 @@ export default function App() {
           <span className="brand-sub">Vector Logo Generator</span>
         </div>
         <div className="header-actions">
-          <button className="btn btn-random-all" onClick={randomizeAll}>⚡ Randomize All</button>
           <button className="btn btn-ghost" onClick={copySVGCode}>Copy SVG</button>
           <button className="btn btn-ghost" onClick={exportSVG}>Export SVG</button>
           <div className="export-group" ref={pngMenuRef}>
@@ -713,6 +712,7 @@ export default function App() {
           <div className="canvas-actions">
             <button className="btn btn-save" onClick={saveToHistory}>♡ Save</button>
             <button className="btn btn-regen" onClick={regenerate}>⟳ Regenerate</button>
+            <button className="btn btn-random-all" onClick={randomizeAll}>⚡ Randomize All</button>
           </div>
         </section>
 
