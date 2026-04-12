@@ -933,15 +933,11 @@ export default function App() {
                   <div
                     key={item.id}
                     className={`history-item ${item.bgType === 'transparent' ? 'transparent-bg' : ''} ${isSelected ? 'selected' : ''}`}
-                    onClick={() => loadFromHistory(item)}
-                    title="Click to restore"
+                    onClick={() => toggleHistorySelect(item.id)}
+                    title="Click to select"
                   >
                     <MiniLogo logo={item.logoData} />
-                    <button
-                      className="history-item-select"
-                      onClick={e => { e.stopPropagation(); toggleHistorySelect(item.id); }}
-                      title={isSelected ? 'Deselect' : 'Select'}
-                    >{isSelected ? '✓' : ''}</button>
+                    {isSelected && <div className="history-item-check">✓</div>}
                     <button
                       className="history-item-delete"
                       onClick={e => { e.stopPropagation(); removeFromHistory(item.id); }}
