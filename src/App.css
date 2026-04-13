@@ -499,22 +499,18 @@ html, body, #root {
 }
 
 .btn-heart {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
   border-radius: 50%;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.5);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: rgba(255,255,255,0.4);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.18s;
-  z-index: 2;
 }
 
 .btn-heart svg {

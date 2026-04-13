@@ -704,7 +704,7 @@ export default function App() {
   const exportCurrentAI = () => {
     const str = getSVGString();
     if (!str) return;
-    const blob = new Blob([str], { type: 'image/svg+xml' });
+    const blob = new Blob([wrapSVGAsEPS(str)], { type: 'application/postscript' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `logoforge-${Date.now()}.ai`; a.click();
@@ -737,7 +737,7 @@ export default function App() {
   const exportSelectedAI = () => {
     const items = history.filter(i => selectedHistoryIds.has(i.id));
     const str = buildCombinedAISVG(items);
-    const blob = new Blob([str], { type: 'image/svg+xml' });
+    const blob = new Blob([wrapSVGAsEPS(str)], { type: 'application/postscript' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `logoforge-${items.length}-logos.ai`; a.click();
@@ -805,7 +805,7 @@ export default function App() {
                   </div>
                 )}
               </div>
-              <button className="btn btn-export-dim" onClick={deselectAllHistory}>✕ Deselect</button>
+              <button className="btn btn-export-dim" onClick={deselectAllHistory}>✕ Reset</button>
             </>
           ) : (
             <>
@@ -1103,15 +1103,15 @@ export default function App() {
         <section className="canvas-area">
           <div className={`logo-canvas-wrapper ${bgType === 'transparent' ? 'transparent-bg' : ''}`}>
             <LogoSVG logo={logoData} svgRef={svgRef} layerMode={layerMode} singleColor={singleColor} />
+          </div>
+          <div className="canvas-actions">
+            <button className="btn btn-random-all" onClick={randomizeAll}>⚡ Randomize All</button>
+            <button className="btn btn-regen" onClick={regenerate}>⟳ Regenerate</button>
             <button className="btn-heart" onClick={saveToHistory} title="Save to history">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 14 21 12 21Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               </svg>
             </button>
-          </div>
-          <div className="canvas-actions">
-            <button className="btn btn-random-all" onClick={randomizeAll}>⚡ Randomize All</button>
-            <button className="btn btn-regen" onClick={regenerate}>⟳ Regenerate</button>
           </div>
         </section>
 
