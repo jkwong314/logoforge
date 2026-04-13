@@ -459,6 +459,7 @@ export default function App() {
   const [logoSize, setLogoSize] = useState(50);
   const [exportName, setExportName] = useState('');
   const [activeHistoryId, setActiveHistoryId] = useState(null);
+  const [nameSaved, setNameSaved] = useState(false);
   const [history, setHistory] = useState([]);
   const [gradientSelectedStop, setGradientSelectedStop] = useState(0);
   const [selectedHistoryIds, setSelectedHistoryIds] = useState(new Set());
@@ -1124,12 +1125,20 @@ export default function App() {
               className="export-name-input"
               value={exportName}
               onChange={e => updateExportName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.target.blur();
+                  setNameSaved(true);
+                  setTimeout(() => setNameSaved(false), 2000);
+                }
+              }}
               placeholder="Logo Name"
               spellCheck={false}
             />
             <svg className="export-name-edit-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11.5 2.5L13.5 4.5L5.5 12.5H3.5V10.5L11.5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
             </svg>
+            {nameSaved && <span className="export-name-saved">saved</span>}
           </div>
           <div className={`logo-canvas-wrapper ${bgType === 'transparent' ? 'transparent-bg' : ''}`}>
             <LogoSVG logo={logoData} svgRef={svgRef} layerMode={layerMode} singleColor={singleColor} />

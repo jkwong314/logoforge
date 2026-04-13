@@ -483,6 +483,22 @@ html, body, #root {
   pointer-events: none;
 }
 
+.export-name-saved {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  pointer-events: none;
+  animation: nameSavedFade 2s ease forwards;
+}
+
+@keyframes nameSavedFade {
+  0%   { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* ─── CANVAS ACTIONS ──────────────────────────── */
 .canvas-actions {
   position: relative;
