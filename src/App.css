@@ -418,6 +418,33 @@ html, body, #root {
     0 0 / 20px 20px;
 }
 
+/* ─── EXPORT NAME INPUT ───────────────────────── */
+.export-name-input {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  outline: none;
+  padding: 4px 8px;
+  width: 200px;
+  transition: border-color 0.15s, color 0.15s;
+  position: relative;
+  z-index: 1;
+}
+
+.export-name-input::placeholder {
+  color: var(--text-dim);
+}
+
+.export-name-input:focus {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
 /* ─── CANVAS ACTIONS ──────────────────────────── */
 .canvas-actions {
   position: relative;

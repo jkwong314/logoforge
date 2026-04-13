@@ -222,19 +222,11 @@ export function generateLogo({
 
   const n = shapeCount || irand(cfg.minN, cfg.maxN, sRNG);
   const baseShapes = [];
-  const isRadial = symmetry === 'radial-4' || symmetry === 'radial-6';
+  const RADIAL_MULT = { 'radial-3': 3, 'radial-4': 4, 'radial-5': 5, 'radial-6': 6 };
+  const isRadial = symmetry in RADIAL_MULT;
 
   if (isRadial) {
-    // ── Radial placement ────────────────────────────────────────────────────
-    // Place each base shape along the positive x-axis at a radial offset.
-    // The symmetry control rotates them into the full flower/clover pattern.
-    //
-    // Key: shapes with tips at center (offset < size/2) create clover/overlap
-    // patterns; shapes with gap at center (offset ≈ size/2) create spaced
-    // petal patterns. We keep the type consistent per "ring" for clean logos.
-    //
-    // For radial-4: shapeCount=1 → 4 petals, shapeCount=2 → 8 (two rings), etc.
-    const radialMult = symmetry === 'radial-4' ? 4 : 6;
+    const radialMult = RADIAL_MULT[symmetry];
     const ringCount = Math.max(1, Math.ceil(n / radialMult));
 
     for (let ring = 0; ring < ringCount; ring++) {
@@ -293,7 +285,9 @@ export function generateLogo({
     none: [null],
     'mirror-h': [null, 'mirror-h'],
     'mirror-v': [null, 'mirror-v'],
+    'radial-3': [null, 120, 240],
     'radial-4': [null, 90, 180, 270],
+    'radial-5': [null, 72, 144, 216, 288],
     'radial-6': [null, 60, 120, 180, 240, 300],
   };
   const variants = SYM_MAP[symmetry] || [null];

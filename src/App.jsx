@@ -9,8 +9,10 @@ const SYMMETRIES = [
   { key: 'none', label: 'Off' },
   { key: 'mirror-h', label: 'H-Mirror' },
   { key: 'mirror-v', label: 'V-Mirror' },
-  { key: 'radial-4', label: '4× Radial' },
-  { key: 'radial-6', label: '6× Radial' },
+  { key: 'radial-3', label: '3×' },
+  { key: 'radial-4', label: '4×' },
+  { key: 'radial-5', label: '5×' },
+  { key: 'radial-6', label: '6×' },
 ];
 const PNG_SIZES = [512, 1024, 2048];
 
@@ -458,6 +460,7 @@ export default function App() {
   const [shapeSeed, setShapeSeed] = useState(randSeed);
   const [colorSeed, setColorSeed] = useState(randSeed);
   const [logoSize, setLogoSize] = useState(50);
+  const [exportName, setExportName] = useState('logoforge');
   const [lockShapes, setLockShapes] = useState(false);
   const [lockColors, setLockColors] = useState(false);
   const [history, setHistory] = useState([]);
@@ -548,7 +551,7 @@ export default function App() {
     setHistory(h => [
       { id: Date.now(), logoData, shapeSeed, colorSeed,
         style, paletteKey, bgType, bgColor, bgGrad1, bgGrad2, bgGradAngle, bgGradType,
-        symmetry, colorMode, singleColor, layerMode, centerGap },
+        symmetry, colorMode, singleColor, layerMode, centerGap, exportName },
       ...h,
     ].slice(0, 20));
     showToast('Saved to history');
@@ -597,7 +600,7 @@ export default function App() {
         const blob = new Blob([str], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `logoforge-${idx + 1}.svg`; a.click();
+        a.href = url; a.download = `${item.exportName || 'logoforge'}-${idx + 1}.svg`; a.click();
         URL.revokeObjectURL(url);
       }, idx * 250);
     });
@@ -622,7 +625,7 @@ export default function App() {
           }
           ctx.drawImage(img, 0, 0, size, size);
           const a = document.createElement('a');
-          a.download = `logoforge-${idx + 1}-${size}px.png`; a.href = canvas.toDataURL('image/png'); a.click();
+          a.download = `${item.exportName || 'logoforge'}-${idx + 1}-${size}px.png`; a.href = canvas.toDataURL('image/png'); a.click();
           URL.revokeObjectURL(url);
         };
         img.src = url;
@@ -663,7 +666,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `logoforge-${Date.now()}.svg`;
+    a.download = `${exportName || 'logoforge'}.svg`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('SVG exported');
@@ -698,7 +701,7 @@ export default function App() {
       }
       ctx.drawImage(img, 0, 0, cw, ch);
       const a = document.createElement('a');
-      a.download = `logoforge-${size}px-${Date.now()}.png`;
+      a.download = `${exportName || 'logoforge'}-${size}px.png`;
       a.href = canvas.toDataURL('image/png');
       a.click();
       URL.revokeObjectURL(url);
@@ -707,23 +710,13 @@ export default function App() {
     img.src = url;
   };
 
-  const exportCurrentAI = () => {
-    const str = buildIllustratorSVG([{ logoData, layerMode, singleColor, bgType }]);
-    const blob = new Blob([str], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `logoforge-${Date.now()}.ai`; a.click();
-    URL.revokeObjectURL(url);
-    showToast('AI file exported');
-  };
-
   const exportCurrentEPS = () => {
     const str = getSVGString();
     if (!str) return;
     const blob = new Blob([wrapSVGAsEPS(str)], { type: 'application/postscript' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `logoforge-${Date.now()}.eps`; a.click();
+    a.href = url; a.download = `${exportName || 'logoforge'}.eps`; a.click();
     URL.revokeObjectURL(url);
     showToast('EPS file exported');
   };
@@ -734,20 +727,9 @@ export default function App() {
     const blob = new Blob([bytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `logoforge-${Date.now()}.pdf`; a.click();
+    a.href = url; a.download = `${exportName || 'logoforge'}.pdf`; a.click();
     URL.revokeObjectURL(url);
     showToast('PDF exported');
-  };
-
-  const exportSelectedAI = () => {
-    const items = history.filter(i => selectedHistoryIds.has(i.id));
-    const str = buildIllustratorSVG(items);
-    const blob = new Blob([str], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `logoforge-${items.length}-logos.ai`; a.click();
-    URL.revokeObjectURL(url);
-    showToast(`AI exported (${items.length} logos)`);
   };
 
   const exportSelectedEPS = () => {
@@ -758,7 +740,7 @@ export default function App() {
         const blob = new Blob([wrapSVGAsEPS(str)], { type: 'application/postscript' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `logoforge-${idx + 1}.eps`; a.click();
+        a.href = url; a.download = `${item.exportName || 'logoforge'}-${idx + 1}.eps`; a.click();
         URL.revokeObjectURL(url);
       }, idx * 250);
     });
@@ -804,7 +786,6 @@ export default function App() {
                       </button>
                     ))}
                     <div className="dropdown-divider" />
-                    <button onClick={() => { exportSelectedAI(); setShowPngMenu(false); }}>.AI <span className="dropdown-badge">1 file</span></button>
                     <button onClick={() => { exportSelectedEPS(); setShowPngMenu(false); }}>.EPS <span className="dropdown-badge">{selectedHistoryIds.size} files</span></button>
                     <button onClick={() => { exportSelectedPDF(); setShowPngMenu(false); }}>.PDF <span className="dropdown-badge">1 file</span></button>
                   </div>
@@ -824,7 +805,6 @@ export default function App() {
                       <button key={s} onClick={() => exportPNG(s)}>PNG {s}px</button>
                     ))}
                     <div className="dropdown-divider" />
-                    <button onClick={() => { exportCurrentAI(); setShowPngMenu(false); }}>.AI</button>
                     <button onClick={() => { exportCurrentEPS(); setShowPngMenu(false); }}>.EPS</button>
                     <button onClick={() => { exportCurrentPDF(); setShowPngMenu(false); }}>.PDF</button>
                   </div>
@@ -1046,7 +1026,7 @@ export default function App() {
               ))}
             </div>
 
-            {(symmetry === 'radial-4' || symmetry === 'radial-6') && (
+            {['radial-3','radial-4','radial-5','radial-6'].includes(symmetry) && (
               <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div className="control-label">
                   Center Gap
@@ -1118,6 +1098,13 @@ export default function App() {
 
         {/* ── Canvas ── */}
         <section className="canvas-area">
+          <input
+            className="export-name-input"
+            value={exportName}
+            onChange={e => setExportName(e.target.value)}
+            placeholder="filename"
+            spellCheck={false}
+          />
           <div className={`logo-canvas-wrapper ${bgType === 'transparent' ? 'transparent-bg' : ''}`}>
             <LogoSVG logo={logoData} svgRef={svgRef} layerMode={layerMode} singleColor={singleColor} />
           </div>
