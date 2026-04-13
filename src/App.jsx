@@ -1141,7 +1141,9 @@ export default function App() {
             </button>
           </div>
           <div className="canvas-hints">
-            SPACE — regenerate · S — save · ← → — browse saved
+            <span>SPACE — regenerate</span>
+            <span>S — save</span>
+            <span>← → — browse saved</span>
           </div>
         </section>
 
