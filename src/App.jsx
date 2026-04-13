@@ -1129,7 +1129,7 @@ export default function App() {
                 if (e.key === 'Enter') {
                   e.target.blur();
                   setNameSaved(true);
-                  setTimeout(() => setNameSaved(false), 2000);
+                  setTimeout(() => setNameSaved(false), 1000);
                 }
               }}
               placeholder="Logo Name"

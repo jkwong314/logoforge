@@ -484,18 +484,23 @@ html, body, #root {
 }
 
 .export-name-saved {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
   font-family: var(--font-ui);
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent);
   pointer-events: none;
-  animation: nameSavedFade 2s ease forwards;
+  white-space: nowrap;
+  animation: nameSavedFade 1s ease forwards;
 }
 
 @keyframes nameSavedFade {
   0%   { opacity: 1; }
-  60%  { opacity: 1; }
+  50%  { opacity: 1; }
   100% { opacity: 0; }
 }
 
