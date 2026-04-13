@@ -472,6 +472,7 @@ export default function App() {
   const pngMenuRef = useRef(null);
   const exportAllMenuRef = useRef(null);
   const nameInputRef = useRef(null);
+  const exportNameRef = useRef('');
 
   // Close PNG menu on outside click
   useEffect(() => {
@@ -514,7 +515,7 @@ export default function App() {
             const idx = h.findIndex(i => i.id === prev);
             const next = h[Math.max(0, idx - 1)];
             loadFromHistory(next);
-            setExportName(next.exportName || '');
+            const n1 = next.exportName || ''; exportNameRef.current = n1; setExportName(n1);
             return next.id;
           });
           return h;
@@ -528,7 +529,7 @@ export default function App() {
             const idx = h.findIndex(i => i.id === prev);
             const next = h[Math.min(h.length - 1, idx + 1)];
             loadFromHistory(next);
-            setExportName(next.exportName || '');
+            const n2 = next.exportName || ''; exportNameRef.current = n2; setExportName(n2);
             return next.id;
           });
           return h;
@@ -558,6 +559,9 @@ export default function App() {
   const regenerate = useCallback(() => {
     setShapeSeed(randSeed());
     setColorSeed(randSeed());
+    exportNameRef.current = '';
+    setExportName('');
+    setActiveHistoryId(null);
   }, []);
 
   const randomizeAll = () => {
@@ -569,9 +573,13 @@ export default function App() {
     setSingleColor('#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0'));
     setShapeSeed(randSeed());
     setColorSeed(randSeed());
+    exportNameRef.current = '';
+    setExportName('');
+    setActiveHistoryId(null);
   };
 
   const updateExportName = (name) => {
+    exportNameRef.current = name;
     setExportName(name);
     if (activeHistoryId !== null) {
       setHistory(h => h.map(i => i.id === activeHistoryId ? { ...i, exportName: name } : i));
@@ -589,7 +597,7 @@ export default function App() {
     setHistory(h => [
       { id: newId, logoData, shapeSeed, colorSeed,
         style, paletteKey, bgType, bgColor, bgGrad1, bgGrad2, bgGradAngle, bgGradType,
-        symmetry, colorMode, singleColor, layerMode, centerGap, exportName },
+        symmetry, colorMode, singleColor, layerMode, centerGap, exportName: exportNameRef.current },
       ...h,
     ].slice(0, 20));
     showToast('Saved to history');
@@ -1188,7 +1196,7 @@ export default function App() {
                     <div
                       key={item.id}
                       className={`history-item ${item.bgType === 'transparent' ? 'transparent-bg' : ''} ${isSelected ? 'selected' : ''}`}
-                      onClick={() => { loadFromHistory(item); setExportName(item.exportName || ''); setActiveHistoryId(item.id); toggleHistorySelect(item.id); }}
+                      onClick={() => { loadFromHistory(item); const n = item.exportName || ''; exportNameRef.current = n; setExportName(n); setActiveHistoryId(item.id); toggleHistorySelect(item.id); }}
                       title="Click to load / select"
                     >
                       <MiniLogo logo={item.logoData} />

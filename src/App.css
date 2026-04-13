@@ -470,6 +470,10 @@ html, body, #root {
   color: var(--text-dim);
 }
 
+.export-name-input:not(:placeholder-shown) {
+  color: var(--text);
+}
+
 .export-name-input:focus {
   color: var(--text);
 }
