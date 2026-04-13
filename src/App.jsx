@@ -702,10 +702,10 @@ export default function App() {
     img.src = url;
   };
 
-  const exportCurrentAI = () => {
-    const str = getSVGString();
-    if (!str) return;
-    const blob = new Blob([wrapSVGAsEPS(str)], { type: 'application/postscript' });
+  const exportCurrentAI = async () => {
+    showToast('Generating AI…');
+    const bytes = await buildPDFBytes([{ logoData, layerMode, singleColor, bgType }]);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `logoforge-${Date.now()}.ai`; a.click();
@@ -735,10 +735,11 @@ export default function App() {
     showToast('PDF exported');
   };
 
-  const exportSelectedAI = () => {
+  const exportSelectedAI = async () => {
     const items = history.filter(i => selectedHistoryIds.has(i.id));
-    const str = buildCombinedAISVG(items);
-    const blob = new Blob([wrapSVGAsEPS(str)], { type: 'application/postscript' });
+    showToast('Generating AI…');
+    const bytes = await buildPDFBytes(items);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `logoforge-${items.length}-logos.ai`; a.click();
