@@ -192,6 +192,145 @@ function buildItemSVGString(item) {
   return `<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" width="500" height="500">${defs}${bg}<g>${shapesStr}</g>${text}</svg>`;
 }
 
+// ─── Advanced export helpers ──────────────────────────────────────────────────
+
+function svgToCanvas(svgStr, size = 500) {
+  return new Promise((resolve) => {
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      canvas.getContext('2d').drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      resolve(canvas);
+    };
+    img.src = url;
+  });
+}
+
+function canvasToJPEGBytes(canvas, quality = 0.9) {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => blob.arrayBuffer().then(buf => resolve(new Uint8Array(buf))), 'image/jpeg', quality);
+  });
+}
+
+async function buildPDFBytes(items, size = 500) {
+  const pages = [];
+  for (const item of items) {
+    const canvas = await svgToCanvas(buildItemSVGString(item), size);
+    pages.push(await canvasToJPEGBytes(canvas));
+  }
+
+  const enc = new TextEncoder();
+  const parts = [];
+  let offset = 0;
+
+  const write = (str) => { const b = enc.encode(str); parts.push(b); offset += b.length; };
+  const writeBin = (bytes) => { parts.push(bytes); offset += bytes.length; };
+
+  write('%PDF-1.4\n%\xFF\xFF\xFF\xFF\n');
+
+  const objOffsets = {};
+  let objNum = 1;
+
+  // Catalog
+  objOffsets[objNum] = offset;
+  write(`${objNum} 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`);
+  objNum++;
+
+  // Pages node (placeholder — we know obj 2 is Pages, kids start at 3)
+  const pagesPos = offset;
+  objOffsets[objNum] = offset;
+  const kids = pages.map((_, i) => `${3 + i * 3} 0 R`).join(' ');
+  write(`${objNum} 0 obj\n<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>\nendobj\n`);
+  objNum++;
+
+  for (let i = 0; i < pages.length; i++) {
+    const jpeg = pages[i];
+    const pageN = objNum;
+    const imgN = objNum + 1;
+    const contN = objNum + 2;
+
+    objOffsets[pageN] = offset;
+    write(`${pageN} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${size} ${size}] /Resources << /XObject << /Im${i} ${imgN} 0 R >> >> /Contents ${contN} 0 R >>\nendobj\n`);
+
+    objOffsets[imgN] = offset;
+    write(`${imgN} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${size} /Height ${size} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
+    writeBin(jpeg);
+    write(`\nendstream\nendobj\n`);
+
+    const cs = `q ${size} 0 0 ${size} 0 0 cm /Im${i} Do Q`;
+    objOffsets[contN] = offset;
+    write(`${contN} 0 obj\n<< /Length ${cs.length} >>\nstream\n${cs}\nendstream\nendobj\n`);
+
+    objNum += 3;
+  }
+
+  const xrefOffset = offset;
+  write(`xref\n0 ${objNum}\n`);
+  write(`0000000000 65535 f \n`);
+  for (let i = 1; i < objNum; i++) write(`${String(objOffsets[i]).padStart(10, '0')} 00000 n \n`);
+  write(`trailer\n<< /Size ${objNum} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`);
+
+  const total = parts.reduce((s, p) => s + p.length, 0);
+  const result = new Uint8Array(total);
+  let pos = 0;
+  for (const p of parts) { result.set(p, pos); pos += p.length; }
+  return result;
+}
+
+function buildCombinedAISVG(items) {
+  const size = 500;
+  const cols = Math.ceil(Math.sqrt(items.length));
+  const rows = Math.ceil(items.length / cols);
+  let defs = '';
+  let content = '';
+
+  items.forEach((item, idx) => {
+    const { logoData, layerMode, singleColor } = item;
+    const { shapes, background, textLayer } = logoData;
+    const isOneLayer = layerMode === 'one';
+    const tx = (idx % cols) * size;
+    const ty = Math.floor(idx / cols) * size;
+
+    let bgStr = '';
+    if (background.type === 'solid') {
+      bgStr = `<rect width="${size}" height="${size}" fill="${background.color}"/>`;
+    } else if (background.type === 'gradient') {
+      const gid = `ai-grad-${idx}`;
+      if (background.gradientType === 'radial') {
+        defs += `<radialGradient id="${gid}" cx="50%" cy="50%" r="60%"><stop offset="0%" stop-color="${background.color1}"/><stop offset="100%" stop-color="${background.color2}"/></radialGradient>`;
+      } else {
+        const { x1, y1, x2, y2 } = angleToGradientAttrs(background.angle ?? 180);
+        defs += `<linearGradient id="${gid}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0%" stop-color="${background.color1}"/><stop offset="100%" stop-color="${background.color2}"/></linearGradient>`;
+      }
+      bgStr = `<rect width="${size}" height="${size}" fill="url(#ai-grad-${idx})"/>`;
+    }
+
+    const shapesStr = shapes.map(s => isOneLayer
+      ? shapeToStr({ ...s, fill: singleColor, stroke: 'none', opacity: 1, blendMode: 'normal' })
+      : shapeToStr(s)
+    ).join('');
+
+    const textStr = textLayer
+      ? `<text x="${textLayer.x}" y="${textLayer.y}" text-anchor="middle" dominant-baseline="auto" font-size="${textLayer.fontSize}" fill="${textLayer.fill}" font-family="${textLayer.fontFamily}" font-weight="${textLayer.fontWeight}" letter-spacing="${textLayer.letterSpacing}">${textLayer.text}</text>`
+      : '';
+
+    content += `<g transform="translate(${tx},${ty})">${bgStr}<g>${shapesStr}</g>${textStr}</g>`;
+  });
+
+  const w = cols * size;
+  const h = rows * size;
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs>${defs}</defs>${content}</svg>`;
+}
+
+function wrapSVGAsEPS(svgStr) {
+  return `%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 500 500\n%%HiResBoundingBox: 0 0 500 500\n%%BeginDocument: logo.svg\n${svgStr}\n%%EndDocument\n%%EOF`;
+}
+
 // ─── Logo SVG ─────────────────────────────────────────────────────────────────
 
 function LogoSVG({ logo, svgRef, layerMode, singleColor }) {
@@ -562,6 +701,77 @@ export default function App() {
     img.src = url;
   };
 
+  const exportCurrentAI = () => {
+    const str = getSVGString();
+    if (!str) return;
+    const blob = new Blob([str], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `logoforge-${Date.now()}.ai`; a.click();
+    URL.revokeObjectURL(url);
+    showToast('AI file exported');
+  };
+
+  const exportCurrentEPS = () => {
+    const str = getSVGString();
+    if (!str) return;
+    const blob = new Blob([wrapSVGAsEPS(str)], { type: 'application/postscript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `logoforge-${Date.now()}.eps`; a.click();
+    URL.revokeObjectURL(url);
+    showToast('EPS file exported');
+  };
+
+  const exportCurrentPDF = async () => {
+    showToast('Generating PDF…');
+    const bytes = await buildPDFBytes([{ logoData, layerMode, singleColor, bgType }]);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `logoforge-${Date.now()}.pdf`; a.click();
+    URL.revokeObjectURL(url);
+    showToast('PDF exported');
+  };
+
+  const exportSelectedAI = () => {
+    const items = history.filter(i => selectedHistoryIds.has(i.id));
+    const str = buildCombinedAISVG(items);
+    const blob = new Blob([str], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `logoforge-${items.length}-logos.ai`; a.click();
+    URL.revokeObjectURL(url);
+    showToast(`AI exported (${items.length} logos)`);
+  };
+
+  const exportSelectedEPS = () => {
+    const items = history.filter(i => selectedHistoryIds.has(i.id));
+    items.forEach((item, idx) => {
+      setTimeout(() => {
+        const str = buildItemSVGString(item);
+        const blob = new Blob([wrapSVGAsEPS(str)], { type: 'application/postscript' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `logoforge-${idx + 1}.eps`; a.click();
+        URL.revokeObjectURL(url);
+      }, idx * 250);
+    });
+    showToast(`Exporting ${items.length} EPS file${items.length > 1 ? 's' : ''}`);
+  };
+
+  const exportSelectedPDF = async () => {
+    const items = history.filter(i => selectedHistoryIds.has(i.id));
+    showToast('Generating PDF…');
+    const bytes = await buildPDFBytes(items);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `logoforge-${items.length}-logos.pdf`; a.click();
+    URL.revokeObjectURL(url);
+    showToast(`PDF exported (${items.length} pages)`);
+  };
+
   return (
     <div className="app">
       {/* ── Header ── */}
@@ -573,18 +783,25 @@ export default function App() {
         <div className="header-actions">
           {selectedHistoryIds.size > 0 ? (
             <>
+              <button className="btn btn-export" onClick={copySVGCode}>Copy SVG</button>
               <button className="btn btn-export" onClick={() => exportItemsSVG(history.filter(i => selectedHistoryIds.has(i.id)))}>
                 Export SVGs ({selectedHistoryIds.size})
               </button>
               <div className="export-group" ref={pngMenuRef}>
                 <button className="btn btn-export" onClick={() => setShowPngMenu(v => !v)}>
-                  Export PNGs ({selectedHistoryIds.size}) ▾
+                  Export ▾
                 </button>
                 {showPngMenu && (
                   <div className="dropdown-menu">
                     {PNG_SIZES.map(s => (
-                      <button key={s} onClick={() => exportItemsPNG(history.filter(i => selectedHistoryIds.has(i.id)), s)}>{s} × {s} px</button>
+                      <button key={s} onClick={() => { exportItemsPNG(history.filter(i => selectedHistoryIds.has(i.id)), s); setShowPngMenu(false); }}>
+                        PNG {s}px <span className="dropdown-badge">{selectedHistoryIds.size} files</span>
+                      </button>
                     ))}
+                    <div className="dropdown-divider" />
+                    <button onClick={() => { exportSelectedAI(); setShowPngMenu(false); }}>.AI <span className="dropdown-badge">1 file</span></button>
+                    <button onClick={() => { exportSelectedEPS(); setShowPngMenu(false); }}>.EPS <span className="dropdown-badge">{selectedHistoryIds.size} files</span></button>
+                    <button onClick={() => { exportSelectedPDF(); setShowPngMenu(false); }}>.PDF <span className="dropdown-badge">1 file</span></button>
                   </div>
                 )}
               </div>
@@ -595,14 +812,16 @@ export default function App() {
               <button className="btn btn-export" onClick={copySVGCode}>Copy SVG</button>
               <button className="btn btn-export" onClick={exportSVG}>Export SVG</button>
               <div className="export-group" ref={pngMenuRef}>
-                <button className="btn btn-export" onClick={() => setShowPngMenu(v => !v)}>
-                  Export PNG ▾
-                </button>
+                <button className="btn btn-export" onClick={() => setShowPngMenu(v => !v)}>Export ▾</button>
                 {showPngMenu && (
                   <div className="dropdown-menu">
                     {PNG_SIZES.map(s => (
-                      <button key={s} onClick={() => exportPNG(s)}>{s} × {s} px</button>
+                      <button key={s} onClick={() => exportPNG(s)}>PNG {s}px</button>
                     ))}
+                    <div className="dropdown-divider" />
+                    <button onClick={() => { exportCurrentAI(); setShowPngMenu(false); }}>.AI</button>
+                    <button onClick={() => { exportCurrentEPS(); setShowPngMenu(false); }}>.EPS</button>
+                    <button onClick={() => { exportCurrentPDF(); setShowPngMenu(false); }}>.PDF</button>
                   </div>
                 )}
               </div>
