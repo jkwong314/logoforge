@@ -419,21 +419,37 @@ html, body, #root {
 }
 
 /* ─── EXPORT NAME INPUT ───────────────────────── */
+.export-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  z-index: 1;
+  border-bottom: 1px solid var(--border);
+  transition: border-color 0.15s;
+  padding-bottom: 2px;
+}
+
+.export-name-wrapper:focus-within {
+  border-bottom-color: var(--accent);
+}
+
+.export-name-wrapper:focus-within .export-name-edit-icon {
+  color: var(--accent);
+}
+
 .export-name-input {
   background: none;
   border: none;
-  border-bottom: 1px solid var(--border);
   color: var(--text-muted);
   font-family: var(--font-ui);
   font-size: 11px;
   letter-spacing: 0.12em;
   text-align: center;
   outline: none;
-  padding: 4px 8px;
-  width: 200px;
-  transition: border-color 0.15s, color 0.15s;
-  position: relative;
-  z-index: 1;
+  padding: 4px 0;
+  width: 180px;
+  transition: color 0.15s;
 }
 
 .export-name-input::placeholder {
@@ -441,8 +457,16 @@ html, body, #root {
 }
 
 .export-name-input:focus {
-  border-bottom-color: var(--accent);
   color: var(--text);
+}
+
+.export-name-edit-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  transition: color 0.15s;
+  pointer-events: none;
 }
 
 /* ─── CANVAS ACTIONS ──────────────────────────── */

@@ -678,6 +678,12 @@ export default function App() {
     navigator.clipboard.writeText(str).then(() => showToast('SVG code copied'));
   };
 
+  const copySelectedSVGs = () => {
+    const items = history.filter(i => selectedHistoryIds.has(i.id));
+    const combined = items.map(item => buildItemSVGString(item)).join('\n\n');
+    navigator.clipboard.writeText(combined).then(() => showToast(`Copied ${items.length} SVG${items.length > 1 ? 's' : ''}`));
+  };
+
   const exportPNG = (size) => {
     setShowPngMenu(false);
     const str = getSVGString();
@@ -770,7 +776,7 @@ export default function App() {
         <div className="header-actions">
           {selectedHistoryIds.size > 0 ? (
             <>
-              <button className="btn btn-export" onClick={copySVGCode}>Copy SVG</button>
+              <button className="btn btn-export" onClick={copySelectedSVGs}>Copy SVG</button>
               <button className="btn btn-export" onClick={() => exportItemsSVG(history.filter(i => selectedHistoryIds.has(i.id)))}>
                 Export SVGs ({selectedHistoryIds.size})
               </button>
@@ -1098,13 +1104,18 @@ export default function App() {
 
         {/* ── Canvas ── */}
         <section className="canvas-area">
-          <input
-            className="export-name-input"
-            value={exportName}
-            onChange={e => setExportName(e.target.value)}
-            placeholder="filename"
-            spellCheck={false}
-          />
+          <div className="export-name-wrapper">
+            <input
+              className="export-name-input"
+              value={exportName}
+              onChange={e => setExportName(e.target.value)}
+              placeholder="Logo Name"
+              spellCheck={false}
+            />
+            <svg className="export-name-edit-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11.5 2.5L13.5 4.5L5.5 12.5H3.5V10.5L11.5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+            </svg>
+          </div>
           <div className={`logo-canvas-wrapper ${bgType === 'transparent' ? 'transparent-bg' : ''}`}>
             <LogoSVG logo={logoData} svgRef={svgRef} layerMode={layerMode} singleColor={singleColor} />
           </div>
@@ -1146,8 +1157,8 @@ export default function App() {
                     <div
                       key={item.id}
                       className={`history-item ${item.bgType === 'transparent' ? 'transparent-bg' : ''} ${isSelected ? 'selected' : ''}`}
-                      onClick={() => toggleHistorySelect(item.id)}
-                      title="Click to select"
+                      onClick={() => { loadFromHistory(item); setExportName(item.exportName || ''); toggleHistorySelect(item.id); }}
+                      title="Click to load / select"
                     >
                       <MiniLogo logo={item.logoData} />
                       {isSelected && <div className="history-item-check">✓</div>}
