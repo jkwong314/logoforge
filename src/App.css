@@ -418,6 +418,16 @@ html, body, #root {
     0 0 / 20px 20px;
 }
 
+/* ─── CANVAS HINTS ────────────────────────────── */
+.canvas-hints {
+  color: var(--text-dim);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
 /* ─── EXPORT NAME INPUT ───────────────────────── */
 .export-name-wrapper {
   display: flex;

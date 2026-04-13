@@ -454,16 +454,11 @@ export default function App() {
   const [bgGradAngle, setBgGradAngle] = useState(180);
   const [bgGradType, setBgGradType] = useState('linear'); // 'linear' | 'radial'
   const [symmetry, setSymmetry] = useState('none');
-  const [text, setText] = useState('');
-  const [fontSize, setFontSize] = useState(52);
-  const [textColor, setTextColor] = useState('#FFFFFF');
   const [shapeSeed, setShapeSeed] = useState(randSeed);
   const [colorSeed, setColorSeed] = useState(randSeed);
   const [logoSize, setLogoSize] = useState(50);
   const [exportName, setExportName] = useState('');
   const [activeHistoryId, setActiveHistoryId] = useState(null);
-  const [lockShapes, setLockShapes] = useState(false);
-  const [lockColors, setLockColors] = useState(false);
   const [history, setHistory] = useState([]);
   const [gradientSelectedStop, setGradientSelectedStop] = useState(0);
   const [selectedHistoryIds, setSelectedHistoryIds] = useState(new Set());
@@ -500,12 +495,40 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showExportAllMenu]);
 
-  // Keyboard shortcuts: Space = regenerate, S = save
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
       if (e.target.tagName === 'INPUT') return;
       if (e.code === 'Space') { e.preventDefault(); regenerate(); }
       if (e.code === 'KeyS' && !e.metaKey && !e.ctrlKey) saveToHistory();
+      if (e.code === 'ArrowLeft' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        setHistory(h => {
+          if (!h.length) return h;
+          setActiveHistoryId(prev => {
+            const idx = h.findIndex(i => i.id === prev);
+            const next = h[Math.max(0, idx - 1)];
+            loadFromHistory(next);
+            setExportName(next.exportName || '');
+            return next.id;
+          });
+          return h;
+        });
+      }
+      if (e.code === 'ArrowRight' || e.code === 'ArrowDown') {
+        e.preventDefault();
+        setHistory(h => {
+          if (!h.length) return h;
+          setActiveHistoryId(prev => {
+            const idx = h.findIndex(i => i.id === prev);
+            const next = h[Math.min(h.length - 1, idx + 1)];
+            loadFromHistory(next);
+            setExportName(next.exportName || '');
+            return next.id;
+          });
+          return h;
+        });
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -517,20 +540,20 @@ export default function App() {
     generateLogo({
       style, shapeCount, palette, bgType, bgColor,
       bgGradient: { color1: bgGrad1, color2: bgGrad2, angle: bgGradAngle, gradientType: bgGradType },
-      text, fontSize, textColor, fontFamily: 'sans-serif',
+      text: '', fontSize: 0, textColor: '#fff', fontFamily: 'sans-serif',
       symmetry, shapeSeed, colorSeed,
       colorMode: layerMode === 'one' ? 'single' : colorMode,
       singleColor, layerMode, centerGap, logoSize,
     }),
     [style, shapeCount, palette, bgType, bgColor, bgGrad1, bgGrad2, bgGradAngle, bgGradType,
-     text, fontSize, textColor, symmetry, shapeSeed, colorSeed,
+     symmetry, shapeSeed, colorSeed,
      colorMode, singleColor, layerMode, centerGap, logoSize]
   );
 
   const regenerate = useCallback(() => {
-    if (!lockShapes) setShapeSeed(randSeed());
-    if (!lockColors) setColorSeed(randSeed());
-  }, [lockShapes, lockColors]);
+    setShapeSeed(randSeed());
+    setColorSeed(randSeed());
+  }, []);
 
   const randomizeAll = () => {
     setStyle(STYLES[Math.floor(Math.random() * STYLES.length)]);
@@ -1089,55 +1112,6 @@ export default function App() {
             )}
           </div>
 
-          <div className="divider" />
-
-          {/* Text */}
-          <div className="control-group">
-            <div className="control-label">Text Overlay</div>
-            <input
-              type="text" className="text-input"
-              placeholder="Company name..."
-              value={text}
-              onChange={e => setText(e.target.value)}
-              maxLength={20}
-            />
-            {text && (
-              <>
-                <div className="control-label" style={{ marginTop: 4 }}>
-                  Size <span className="control-value">{fontSize}px</span>
-                </div>
-                <input
-                  type="range" className="slider"
-                  min={20} max={80} value={fontSize}
-                  onChange={e => setFontSize(+e.target.value)}
-                />
-                <div className="text-controls">
-                  <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} />
-                  <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>Text color</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="divider" />
-
-          {/* Lock */}
-          <div className="control-group">
-            <div className="control-label">Lock on Regenerate</div>
-            <div className="lock-row">
-              <button className={`lock-btn ${lockShapes ? 'active' : ''}`} onClick={() => setLockShapes(v => !v)}>
-                <span className="lock-icon">{lockShapes ? '🔒' : '🔓'}</span> Shapes
-              </button>
-              <button className={`lock-btn ${lockColors ? 'active' : ''}`} onClick={() => setLockColors(v => !v)}>
-                <span className="lock-icon">{lockColors ? '🔒' : '🔓'}</span> Colors
-              </button>
-            </div>
-          </div>
-
-          <div style={{ color: 'var(--text-dim)', fontSize: 9, letterSpacing: '0.1em', lineHeight: 1.8, marginTop: 4 }}>
-            SPACE — regenerate<br />
-            S — save to history
-          </div>
         </aside>
 
         {/* ── Canvas ── */}
@@ -1165,6 +1139,9 @@ export default function App() {
                 <path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.91 3.81 13 5.08C14.09 3.81 15.76 3 17.5 3C20.58 3 23 5.42 23 8.5C23 14.5 14 21 12 21Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               </svg>
             </button>
+          </div>
+          <div className="canvas-hints">
+            SPACE — regenerate · S — save · ← → — browse saved
           </div>
         </section>
 
