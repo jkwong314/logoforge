@@ -213,10 +213,12 @@ export function generateLogo({
   singleColor, // hex string used when colorMode === 'single'
   layerMode,   // 'one' | 'individual'
   centerGap,   // 0 (heavy overlap) … 100 (open gap) — radial mode only
+  logoSize,    // 'S' | 'M' | 'L'
 }) {
   const cfg = STYLE_CONFIGS[style] || STYLE_CONFIGS.geometric;
   const sRNG = createRNG(shapeSeed);
   const cRNG = createRNG(colorSeed);
+  const sizeMult = logoSize === 'S' ? 0.65 : logoSize === 'L' ? 1.4 : 1.0;
 
   const n = shapeCount || irand(cfg.minN, cfg.maxN, sRNG);
   const baseShapes = [];
@@ -240,7 +242,7 @@ export function generateLogo({
 
       // Outer rings are smaller so the overall composition stays balanced
       const sizeFraction = ring === 0 ? 1.0 : rand(0.45, 0.75, sRNG);
-      const size = rand(110, 200, sRNG) * cfg.sizeMult * sizeFraction;
+      const size = rand(110, 200, sRNG) * cfg.sizeMult * sizeFraction * sizeMult;
 
       // centerGap (0–100) maps to overlapFactor (0.15–0.85):
       //   0   → 0.15  heavy overlap — shapes fill the center
@@ -279,7 +281,7 @@ export function generateLogo({
       const cx = 250 + dist * Math.cos(angle);
       const cy = 250 + dist * Math.sin(angle);
 
-      const size = rand(sp.sizeMin, sp.sizeMax, sRNG) * cfg.sizeMult;
+      const size = rand(sp.sizeMin, sp.sizeMax, sRNG) * cfg.sizeMult * sizeMult;
       const rot  = rand(0, 360, sRNG);
       const type = pick(cfg.types, sRNG);
       baseShapes.push(buildShape(type, cx, cy, size, rot, sRNG));

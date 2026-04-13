@@ -452,6 +452,7 @@ export default function App() {
   const [textColor, setTextColor] = useState('#FFFFFF');
   const [shapeSeed, setShapeSeed] = useState(randSeed);
   const [colorSeed, setColorSeed] = useState(randSeed);
+  const [logoSize, setLogoSize] = useState('M');
   const [lockShapes, setLockShapes] = useState(false);
   const [lockColors, setLockColors] = useState(false);
   const [history, setHistory] = useState([]);
@@ -510,11 +511,11 @@ export default function App() {
       text, fontSize, textColor, fontFamily: 'sans-serif',
       symmetry, shapeSeed, colorSeed,
       colorMode: layerMode === 'one' ? 'single' : colorMode,
-      singleColor, layerMode, centerGap,
+      singleColor, layerMode, centerGap, logoSize,
     }),
     [style, shapeCount, palette, bgType, bgColor, bgGrad1, bgGrad2, bgGradAngle, bgGradType,
      text, fontSize, textColor, symmetry, shapeSeed, colorSeed,
-     colorMode, singleColor, layerMode, centerGap]
+     colorMode, singleColor, layerMode, centerGap, logoSize]
   );
 
   const regenerate = useCallback(() => {
@@ -856,6 +857,18 @@ export default function App() {
               min={2} max={12} value={shapeCount}
               onChange={e => setShapeCount(+e.target.value)}
             />
+          </div>
+
+          {/* Logo Size */}
+          <div className="control-group">
+            <div className="control-label">Logo Size</div>
+            <div className="chip-grid">
+              {['S', 'M', 'L'].map(s => (
+                <button key={s} className={`chip ${logoSize === s ? 'active' : ''}`} onClick={() => setLogoSize(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Layer Mode */}
