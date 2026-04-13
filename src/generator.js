@@ -281,13 +281,16 @@ export function generateLogo({
   }
 
   // Symmetry expansion
+  // Radial angles start at -90 (North) for odd counts (3, 5) so the
+  // first petal points up. For even counts (4, 6) the East start is
+  // symmetric so it doesn't matter visually.
   const SYM_MAP = {
     none: [null],
     'mirror-h': [null, 'mirror-h'],
     'mirror-v': [null, 'mirror-v'],
-    'radial-3': [null, 120, 240],
+    'radial-3': [-90, 30, 150],
     'radial-4': [null, 90, 180, 270],
-    'radial-5': [null, 72, 144, 216, 288],
+    'radial-5': [-90, -18, 54, 126, 198],
     'radial-6': [null, 60, 120, 180, 240, 300],
   };
   const variants = SYM_MAP[symmetry] || [null];
@@ -301,6 +304,8 @@ export function generateLogo({
         allShapes.push({ ...shape, groupTransform: 'scale(-1,1) translate(-500,0)' });
       } else if (v === 'mirror-v') {
         allShapes.push({ ...shape, groupTransform: 'scale(1,-1) translate(0,-500)' });
+      } else if (v === 0) {
+        allShapes.push({ ...shape });
       } else {
         allShapes.push({ ...shape, groupTransform: `rotate(${v} 250 250)` });
       }

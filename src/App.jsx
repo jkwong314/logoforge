@@ -460,7 +460,8 @@ export default function App() {
   const [shapeSeed, setShapeSeed] = useState(randSeed);
   const [colorSeed, setColorSeed] = useState(randSeed);
   const [logoSize, setLogoSize] = useState(50);
-  const [exportName, setExportName] = useState('logoforge');
+  const [exportName, setExportName] = useState('');
+  const [activeHistoryId, setActiveHistoryId] = useState(null);
   const [lockShapes, setLockShapes] = useState(false);
   const [lockColors, setLockColors] = useState(false);
   const [history, setHistory] = useState([]);
@@ -542,14 +543,23 @@ export default function App() {
     setColorSeed(randSeed());
   };
 
+  const updateExportName = (name) => {
+    setExportName(name);
+    if (activeHistoryId !== null) {
+      setHistory(h => h.map(i => i.id === activeHistoryId ? { ...i, exportName: name } : i));
+    }
+  };
+
   const showToast = (msg) => {
     setToast(msg);
     setToastKey(k => k + 1);
   };
 
   const saveToHistory = useCallback(() => {
+    const newId = Date.now();
+    setActiveHistoryId(newId);
     setHistory(h => [
-      { id: Date.now(), logoData, shapeSeed, colorSeed,
+      { id: newId, logoData, shapeSeed, colorSeed,
         style, paletteKey, bgType, bgColor, bgGrad1, bgGrad2, bgGradAngle, bgGradType,
         symmetry, colorMode, singleColor, layerMode, centerGap, exportName },
       ...h,
@@ -675,13 +685,41 @@ export default function App() {
   const copySVGCode = () => {
     const str = getSVGString();
     if (!str) return;
-    navigator.clipboard.writeText(str).then(() => showToast('SVG code copied'));
+    const writeToClipboard = (text) => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      return Promise.resolve();
+    };
+    writeToClipboard(str).then(() => showToast('SVG code copied'));
   };
 
   const copySelectedSVGs = () => {
     const items = history.filter(i => selectedHistoryIds.has(i.id));
+    if (!items.length) return;
     const combined = items.map(item => buildItemSVGString(item)).join('\n\n');
-    navigator.clipboard.writeText(combined).then(() => showToast(`Copied ${items.length} SVG${items.length > 1 ? 's' : ''}`));
+    const writeToClipboard = (text) => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+      // Fallback for focus/permission issues
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      return Promise.resolve();
+    };
+    writeToClipboard(combined).then(() => showToast(`Copied ${items.length} SVG${items.length > 1 ? 's' : ''}`));
   };
 
   const exportPNG = (size) => {
@@ -1108,7 +1146,7 @@ export default function App() {
             <input
               className="export-name-input"
               value={exportName}
-              onChange={e => setExportName(e.target.value)}
+              onChange={e => updateExportName(e.target.value)}
               placeholder="Logo Name"
               spellCheck={false}
             />
@@ -1157,7 +1195,7 @@ export default function App() {
                     <div
                       key={item.id}
                       className={`history-item ${item.bgType === 'transparent' ? 'transparent-bg' : ''} ${isSelected ? 'selected' : ''}`}
-                      onClick={() => { loadFromHistory(item); setExportName(item.exportName || ''); toggleHistorySelect(item.id); }}
+                      onClick={() => { loadFromHistory(item); setExportName(item.exportName || ''); setActiveHistoryId(item.id); toggleHistorySelect(item.id); }}
                       title="Click to load / select"
                     >
                       <MiniLogo logo={item.logoData} />
