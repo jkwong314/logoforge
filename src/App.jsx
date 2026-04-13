@@ -504,6 +504,8 @@ export default function App() {
       if (e.code === 'Space') { e.preventDefault(); regenerate(); }
       if (e.code === 'KeyS' && !e.metaKey && !e.ctrlKey) saveToHistory();
       if (e.code === 'KeyR' && !e.metaKey && !e.ctrlKey) { e.preventDefault(); nameInputRef.current?.focus(); nameInputRef.current?.select(); }
+      if (e.key === '+' || e.key === '=') setLogoSize(s => Math.min(150, s + 5));
+      if (e.key === '-') setLogoSize(s => Math.max(20, s - 5));
       if (e.code === 'ArrowLeft' || e.code === 'ArrowUp') {
         e.preventDefault();
         setHistory(h => {
@@ -1155,7 +1157,7 @@ export default function App() {
           <div className="canvas-hints">
             <span>SPACE — regenerate</span>
             <span>S — save · R — rename</span>
-            <span>← → — browse saved</span>
+            <span>+/− — size</span>
           </div>
         </section>
 
@@ -1213,6 +1215,7 @@ export default function App() {
               </div>
             </>
           )}
+          <div className="history-browse-hint">← → — browse saved</div>
         </aside>
       </main>
 

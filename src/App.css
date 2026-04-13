@@ -840,6 +840,14 @@ html, body, #root {
   color: var(--accent-2);
 }
 
+.history-browse-hint {
+  text-align: center;
+  font-size: 9px;
+  color: var(--text-dim);
+  padding: 8px 0 4px;
+  letter-spacing: 0.03em;
+}
+
 .history-empty {
   color: var(--text-dim);
   font-size: 10px;
