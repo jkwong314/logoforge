@@ -218,7 +218,7 @@ export function generateLogo({
   const cfg = STYLE_CONFIGS[style] || STYLE_CONFIGS.geometric;
   const sRNG = createRNG(shapeSeed);
   const cRNG = createRNG(colorSeed);
-  const sizeMult = logoSize === 'S' ? 0.65 : logoSize === 'L' ? 1.4 : 1.0;
+  const sizeMult = (logoSize ?? 50) / 50;
 
   const n = shapeCount || irand(cfg.minN, cfg.maxN, sRNG);
   const baseShapes = [];

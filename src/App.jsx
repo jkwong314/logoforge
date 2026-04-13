@@ -452,7 +452,7 @@ export default function App() {
   const [textColor, setTextColor] = useState('#FFFFFF');
   const [shapeSeed, setShapeSeed] = useState(randSeed);
   const [colorSeed, setColorSeed] = useState(randSeed);
-  const [logoSize, setLogoSize] = useState('M');
+  const [logoSize, setLogoSize] = useState(50);
   const [lockShapes, setLockShapes] = useState(false);
   const [lockColors, setLockColors] = useState(false);
   const [history, setHistory] = useState([]);
@@ -861,14 +861,14 @@ export default function App() {
 
           {/* Logo Size */}
           <div className="control-group">
-            <div className="control-label">Logo Size</div>
-            <div className="chip-grid">
-              {['S', 'M', 'L'].map(s => (
-                <button key={s} className={`chip ${logoSize === s ? 'active' : ''}`} onClick={() => setLogoSize(s)}>
-                  {s}
-                </button>
-              ))}
+            <div className="control-label">
+              Logo Size <span className="control-value">{logoSize}%</span>
             </div>
+            <input
+              type="range" className="slider"
+              min={20} max={150} value={logoSize}
+              onChange={e => setLogoSize(+e.target.value)}
+            />
           </div>
 
           {/* Layer Mode */}
