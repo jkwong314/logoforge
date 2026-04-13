@@ -282,19 +282,18 @@ async function buildPDFBytes(items, size = 500) {
   return result;
 }
 
-function buildCombinedAISVG(items) {
+// Build an Illustrator-compatible SVG file (vector, multi-artboard for multiple items).
+// AI's native format is SVG with Adobe namespace declarations — this is what Illustrator
+// opens as fully editable vectors, not a rasterized image.
+function buildIllustratorSVG(items) {
   const size = 500;
-  const cols = Math.ceil(Math.sqrt(items.length));
-  const rows = Math.ceil(items.length / cols);
   let defs = '';
-  let content = '';
+  let layers = '';
 
   items.forEach((item, idx) => {
     const { logoData, layerMode, singleColor } = item;
     const { shapes, background, textLayer } = logoData;
     const isOneLayer = layerMode === 'one';
-    const tx = (idx % cols) * size;
-    const ty = Math.floor(idx / cols) * size;
 
     let bgStr = '';
     if (background.type === 'solid') {
@@ -307,7 +306,7 @@ function buildCombinedAISVG(items) {
         const { x1, y1, x2, y2 } = angleToGradientAttrs(background.angle ?? 180);
         defs += `<linearGradient id="${gid}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0%" stop-color="${background.color1}"/><stop offset="100%" stop-color="${background.color2}"/></linearGradient>`;
       }
-      bgStr = `<rect width="${size}" height="${size}" fill="url(#ai-grad-${idx})"/>`;
+      bgStr = `<rect width="${size}" height="${size}" fill="url(#${gid})"/>`;
     }
 
     const shapesStr = shapes.map(s => isOneLayer
@@ -319,12 +318,18 @@ function buildCombinedAISVG(items) {
       ? `<text x="${textLayer.x}" y="${textLayer.y}" text-anchor="middle" dominant-baseline="auto" font-size="${textLayer.fontSize}" fill="${textLayer.fill}" font-family="${textLayer.fontFamily}" font-weight="${textLayer.fontWeight}" letter-spacing="${textLayer.letterSpacing}">${textLayer.text}</text>`
       : '';
 
-    content += `<g transform="translate(${tx},${ty})">${bgStr}<g>${shapesStr}</g>${textStr}</g>`;
+    // Each logo becomes a named layer (Illustrator layer group)
+    layers += `\n<g xmlns:i="http://ns.adobe.com/AdobeIllustrator/10.0/" i:layer="yes" i:dimmedPercent="50" id="logo-${idx + 1}">\n<title>Logo ${idx + 1}</title>\n${bgStr}<g>${shapesStr}</g>${textStr}\n</g>`;
   });
 
-  const w = cols * size;
-  const h = rows * size;
-  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs>${defs}</defs>${content}</svg>`;
+  // For multi-logo, stack artboards side by side horizontally
+  const cols = items.length;
+  const w = size * cols;
+  const h = size;
+
+  // Illustrator opens SVGs as fully editable vectors when they have:
+  // 1. XML declaration, 2. Adobe namespace on <svg>, 3. x:Version attribute
+  return `<?xml version="1.0" encoding="utf-8"?>\n<!-- Generator: LogoForge -->\n<svg version="1.1"\n  xmlns="http://www.w3.org/2000/svg"\n  xmlns:xlink="http://www.w3.org/1999/xlink"\n  xmlns:x="http://ns.adobe.com/Extensibility/1.0/"\n  xmlns:i="http://ns.adobe.com/AdobeIllustrator/10.0/"\n  x:Version="6.00"\n  viewBox="0 0 ${w} ${h}"\n  width="${w}"\n  height="${h}"\n  xml:space="preserve">\n<defs>${defs}</defs>${layers}\n</svg>`;
 }
 
 function wrapSVGAsEPS(svgStr) {
@@ -702,10 +707,9 @@ export default function App() {
     img.src = url;
   };
 
-  const exportCurrentAI = async () => {
-    showToast('Generating AI…');
-    const bytes = await buildPDFBytes([{ logoData, layerMode, singleColor, bgType }]);
-    const blob = new Blob([bytes], { type: 'application/pdf' });
+  const exportCurrentAI = () => {
+    const str = buildIllustratorSVG([{ logoData, layerMode, singleColor, bgType }]);
+    const blob = new Blob([str], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `logoforge-${Date.now()}.ai`; a.click();
@@ -735,11 +739,10 @@ export default function App() {
     showToast('PDF exported');
   };
 
-  const exportSelectedAI = async () => {
+  const exportSelectedAI = () => {
     const items = history.filter(i => selectedHistoryIds.has(i.id));
-    showToast('Generating AI…');
-    const bytes = await buildPDFBytes(items);
-    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const str = buildIllustratorSVG(items);
+    const blob = new Blob([str], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `logoforge-${items.length}-logos.ai`; a.click();
